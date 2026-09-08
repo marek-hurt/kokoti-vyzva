@@ -1014,17 +1014,7 @@ export async function getAchievements(userId: string, startDate?: string, endDat
     unlocked: soberPercent < 30
   })
 
-  // 😴 Gauge of Shame - Pod 50% aktivity
-  badges.push({
-    id: 'gauge-of-shame',
-    name: 'Gauge of Shame',
-    description: 'Pod 50% aktivních dní',
-    emoji: '😴',
-    type: 'shame',
-    unlocked: consistency.activeDaysPercent < 50
-  })
-
-  // 🏃 Běžecká legenda - Více než 100 km běhu
+  // 🏃 Kokotí legenda - Více než 300 km běhu
   let query = supabase
     .from('activities')
     .select('beh')
@@ -1037,12 +1027,12 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   const totalBeh = activities?.reduce((sum, a) => sum + a.beh, 0) || 0
 
   badges.push({
-    id: 'bezecka-legenda',
-    name: 'Běžecká Legenda',
-    description: 'Více než 100 km běhu',
+    id: 'kokoti-legenda',
+    name: 'Kokotí Legenda',
+    description: 'Více než 300 km běhu',
     emoji: '🏃',
     type: 'achievement',
-    unlocked: totalBeh >= 100
+    unlocked: totalBeh >= 300
   })
 
   // 🚴 Cyklista - Více než 500 km na kole
@@ -1056,57 +1046,57 @@ export async function getAchievements(userId: string, startDate?: string, endDat
     unlocked: totalKolo >= 500
   })
 
-  // 🏔️ Horolezec - Více než 5000 kokotmetrů
+  // 🏔️ Horolezec - Více než 100 kokotmetrů
   const totalKokotmetr = activities?.reduce((sum, a) => sum + a.kokotmetr, 0) || 0
   badges.push({
     id: 'horolezec',
     name: 'Horolezec',
-    description: 'Více než 5000 kokotmetrů',
+    description: 'Více než 100 kokotmetrů',
     emoji: '🏔️',
     type: 'achievement',
-    unlocked: totalKokotmetr >= 5000
+    unlocked: totalKokotmetr >= 100
   })
 
-  // 😇 Střízlivec - Více než 80% dní bez alkoholu
+  // 😇 Vyléčený - 100% dní bez alkoholu
   badges.push({
-    id: 'strizlivec',
-    name: 'Střízlivec',
-    description: 'Více než 80% dní bez alkoholu',
+    id: 'vyleceny',
+    name: 'Vyléčený',
+    description: '100% dní bez alkoholu',
     emoji: '😇',
     type: 'achievement',
-    unlocked: soberPercent >= 80
+    unlocked: soberPercent === 100
   })
 
-  // 💯 Perfekcionista - 100% aktivních dní
+  // 💯 Ultra Kokot - 100% aktivních dní
   badges.push({
-    id: 'perfekcionista',
-    name: 'Perfekcionista',
+    id: 'ultra-kokot',
+    name: 'Ultra Kokot',
     description: '100% aktivních dní',
     emoji: '💯',
     type: 'achievement',
     unlocked: consistency.activeDaysPercent === 100
   })
 
-  // 🐌 Šnek - Konzistence nad 80, ale méně než 100 bodů celkem
+  // 🐌 Konzistentní Mrdka - Konzistence nad 80, ale méně než 100 bodů celkem
   const userEntry = leaderboard.find(u => u.id === userId)
   const totalPoints = userEntry?.total_points || 0
   badges.push({
-    id: 'snek',
-    name: 'Konzistentní Šnek',
+    id: 'konzistentni-mrdka',
+    name: 'Konzistentní Mrdka',
     description: 'Skvělá konzistence, ale pomalý výkon',
     emoji: '🐌',
     type: 'achievement',
     unlocked: consistency.score >= 80 && totalPoints < 100
   })
 
-  // 💪 Warrior - Více než 200 bodů
+  // 💪 Warrior - Více než 400 bodů
   badges.push({
     id: 'warrior',
     name: 'Warrior',
-    description: 'Více než 200 bodů',
+    description: 'Více než 400 bodů',
     emoji: '💪',
     type: 'achievement',
-    unlocked: totalPoints >= 200
+    unlocked: totalPoints >= 400
   })
 
   // Týdenní badges - počítáme z posledního týdne

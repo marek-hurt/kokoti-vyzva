@@ -833,7 +833,7 @@ export default function Page() {
                     </div>
                     <div style={{ fontSize: '3rem', fontWeight: 700 }}>{achievements.shameLevel}%</div>
                     <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
-                      {achievements.shameLevel >= 80 ? 'Kokot!! Pohni sebou!' : achievements.shameLevel >= 60 ? 'Dost slabý výkon...' : 'Trochu se snaž víc'}
+                      {achievements.shameLevel >= 80 ? 'Kokot!! Pohni sebou!' : achievements.shameLevel >= 60 ? 'Dost slabý výkon...' : 'Nejen že si tady navíc, ale si taky k tomu navíc ještě tlustej!'}
                     </div>
                   </div>
                 )}
