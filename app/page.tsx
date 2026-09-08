@@ -154,7 +154,7 @@ export default function Page() {
             <div>
               <div className="week-label"><span className="live-dot" /> 3. TÝDEN VÝZVY</div>
               <p className="week-title">Ještě 4 dny do cíle</p>
-              <p className="week-subtitle">Společně jsme uběhli <strong>200,0 km</strong></p>
+              <p className="week-subtitle">Společně jsme uběhli <strong>{leaderboard.reduce((sum, r) => sum + r.total_km, 0).toFixed(1)} km</strong></p>
             </div>
             <div className="week-ring"><strong>68%</strong><span>hotovo</span></div>
           </section>
