@@ -244,9 +244,13 @@ export default function Page() {
                   <input
                     type="number"
                     value={beh}
-                    onChange={(e) => setBeh(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '' || parseFloat(val) >= 0) setBeh(val)
+                    }}
                     aria-label="Běh v kilometrech"
                     step="0.1"
+                    min="0"
                   />
                   <b>km</b>
                 </div>
@@ -257,9 +261,13 @@ export default function Page() {
                   <input
                     type="number"
                     value={kolo}
-                    onChange={(e) => setKolo(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '' || parseFloat(val) >= 0) setKolo(val)
+                    }}
                     aria-label="Kolo v kilometrech"
                     step="0.1"
+                    min="0"
                   />
                   <b>km</b>
                 </div>
@@ -272,9 +280,13 @@ export default function Page() {
                   <input
                     type="number"
                     value={bazen}
-                    onChange={(e) => setBasen(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '' || parseFloat(val) >= 0) setBasen(val)
+                    }}
                     aria-label="Bazén v kilometrech"
                     step="0.1"
+                    min="0"
                   />
                   <b>km</b>
                 </div>
@@ -285,8 +297,12 @@ export default function Page() {
                   <input
                     type="number"
                     value={kokotmetr}
-                    onChange={(e) => setKokotmetr(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '' || parseInt(val) >= 0) setKokotmetr(val)
+                    }}
                     aria-label="Kokotmetr"
+                    min="0"
                   />
                   <b>kokotm</b>
                 </div>
@@ -336,30 +352,30 @@ export default function Page() {
                 <p style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', opacity: 0.9 }}>
                   {filterUserId === 'all' ? 'CELKOVÉ VÝSLEDKY' : `VÝSLEDKY - ${users.find(u => u.id === filterUserId)?.name}`}
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', gap: '1rem', textAlign: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '0.75rem', textAlign: 'center' }}>
                   <div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.beh.toString()), 0).toFixed(1)}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>běh km</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.beh.toString()), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>běh km</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.kolo.toString()), 0).toFixed(1)}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>kolo km</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.kolo.toString()), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>kolo km</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.bazen.toString()), 0).toFixed(1)}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>bazén km</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.bazen.toString()), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>bazén km</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + a.kokotmetr, 0).toLocaleString()}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>kokotm</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + a.kokotmetr, 0).toLocaleString()}</div>
+                    <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>kokotm</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.filter(a => a.no_alcohol).length}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>dní bez alkoholu</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.filter(a => a.no_alcohol).length}</div>
+                    <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>dní bez 🍺</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + Math.floor(a.beh) + Math.floor(a.kolo / 10) * 2 + Math.floor(a.bazen) * 2 + a.kokotmetr + (a.no_alcohol ? 1 : 0), 0)}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>celkem bodů</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + Math.floor(a.beh) + Math.floor(a.kolo / 10) * 2 + Math.floor(a.bazen) * 2 + a.kokotmetr + (a.no_alcohol ? 1 : 0), 0)}</div>
+                    <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>body</div>
                   </div>
                 </div>
               </div>
@@ -388,8 +404,13 @@ export default function Page() {
                           <input
                             type="number"
                             value={editValues.beh}
-                            onChange={(e) => setEditValues({...editValues, beh: e.target.value})}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              if (val === '' || parseFloat(val) >= 0) setEditValues({...editValues, beh: val})
+                            }}
                             style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
+                            min="0"
+                            step="0.1"
                           />
                         ) : activity.beh}
                       </td>
@@ -398,8 +419,13 @@ export default function Page() {
                           <input
                             type="number"
                             value={editValues.kolo}
-                            onChange={(e) => setEditValues({...editValues, kolo: e.target.value})}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              if (val === '' || parseFloat(val) >= 0) setEditValues({...editValues, kolo: val})
+                            }}
                             style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
+                            min="0"
+                            step="0.1"
                           />
                         ) : activity.kolo}
                       </td>
@@ -408,8 +434,13 @@ export default function Page() {
                           <input
                             type="number"
                             value={editValues.bazen}
-                            onChange={(e) => setEditValues({...editValues, bazen: e.target.value})}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              if (val === '' || parseFloat(val) >= 0) setEditValues({...editValues, bazen: val})
+                            }}
                             style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
+                            min="0"
+                            step="0.1"
                           />
                         ) : activity.bazen}
                       </td>
@@ -418,8 +449,12 @@ export default function Page() {
                           <input
                             type="number"
                             value={editValues.kokotmetr}
-                            onChange={(e) => setEditValues({...editValues, kokotmetr: e.target.value})}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              if (val === '' || parseInt(val) >= 0) setEditValues({...editValues, kokotmetr: val})
+                            }}
                             style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
+                            min="0"
                           />
                         ) : activity.kokotmetr}
                       </td>
