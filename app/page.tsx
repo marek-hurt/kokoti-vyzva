@@ -23,8 +23,8 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, type LeaderboardEntry, type User, type Activity, type PointsHistory } from '@/lib/supabase'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage } from '@/lib/supabase'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, PieChart, Pie, Cell } from 'recharts'
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState('home')
@@ -50,6 +50,16 @@ export default function Page() {
   const [globalPassword, setGlobalPassword] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [showLoginScreen, setShowLoginScreen] = useState(true)
+  const [statsUserId, setStatsUserId] = useState<string>('')
+  const [userStreaks, setUserStreaks] = useState<UserStreaks | null>(null)
+  const [pointsBreakdown, setPointsBreakdown] = useState<PointsBreakdown | null>(null)
+  const [positionStats, setPositionStats] = useState<PositionStats | null>(null)
+  const [dailyAverages, setDailyAverages] = useState<DailyAverages | null>(null)
+  const [bestDay, setBestDay] = useState<BestDay | null>(null)
+  const [weeklyBreakdown, setWeeklyBreakdown] = useState<WeeklyBreakdown[] | null>(null)
+  const [dayOfWeekStats, setDayOfWeekStats] = useState<DayOfWeekStats[] | null>(null)
+  const [consistencyScore, setConsistencyScore] = useState<ConsistencyScore | null>(null)
+  const [comparisonToAverage, setComparisonToAverage] = useState<ComparisonToAverage | null>(null)
   const entryFormRef = useRef<HTMLElement>(null)
 
   const CORRECT_PASSWORD = 'Vymrdanec2026*'
@@ -165,6 +175,42 @@ export default function Page() {
       }
     }
   }, [selectedUserId, users])
+
+  // Načíst statistiky pro vybraného uživatele
+  useEffect(() => {
+    async function loadStats() {
+      if (statsUserId) {
+        const [streaks, breakdown, position, averages, best, weekly, dayOfWeek, consistency, comparison] = await Promise.all([
+          getUserStreaks(statsUserId, challengeStart, challengeEnd),
+          getPointsBreakdown(statsUserId, challengeStart, challengeEnd),
+          getPositionStats(statsUserId, challengeStart, challengeEnd),
+          getDailyAverages(statsUserId, challengeStart, challengeEnd),
+          getBestDay(statsUserId, challengeStart, challengeEnd),
+          getWeeklyBreakdown(statsUserId, challengeStart, challengeEnd),
+          getDayOfWeekStats(statsUserId, challengeStart, challengeEnd),
+          getConsistencyScore(statsUserId, challengeStart, challengeEnd),
+          getComparisonToAverage(statsUserId, challengeStart, challengeEnd)
+        ])
+        setUserStreaks(streaks)
+        setPointsBreakdown(breakdown)
+        setPositionStats(position)
+        setDailyAverages(averages)
+        setBestDay(best)
+        setWeeklyBreakdown(weekly)
+        setDayOfWeekStats(dayOfWeek)
+        setConsistencyScore(consistency)
+        setComparisonToAverage(comparison)
+      }
+    }
+    loadStats()
+  }, [statsUserId, challengeStart, challengeEnd])
+
+  // Nastavit statsUserId na selectedUserId při prvním načtení
+  useEffect(() => {
+    if (selectedUserId && !statsUserId) {
+      setStatsUserId(selectedUserId)
+    }
+  }, [selectedUserId])
 
 
   // Funkce pro přidání aktivity
@@ -751,76 +797,412 @@ export default function Page() {
         {activeTab === 'stats' && (
           <section style={{ padding: '1rem', marginBottom: '5rem' }}>
             <div className="section-heading" style={{ marginBottom: '1rem' }}>
-              <div><p className="eyebrow">GRAF VÝVOJE</p><h2>Průběh <span>bodů</span></h2></div>
+              <div><p className="eyebrow">STATISTIKY</p><h2>Tvoje <span>výsledky</span></h2></div>
             </div>
 
-            {loading ? (
+            {/* Výběr uživatele */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#555' }}>
+                Vyber kokota
+              </label>
+              <select
+                value={statsUserId}
+                onChange={(e) => setStatsUserId(e.target.value)}
+                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d8e7da', fontSize: '1rem', background: '#fff' }}
+              >
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>{user.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {loading || !userStreaks || !pointsBreakdown || !positionStats || !dailyAverages || !bestDay || !weeklyBreakdown || !dayOfWeekStats || !consistencyScore || !comparisonToAverage ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Načítám data...</div>
             ) : (
-              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '2rem', width: '100%', minHeight: '400px' }}>
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={pointsHistory} margin={{ top: 5, right: 80, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fill: '#999', fontSize: 11 }}
-                      tickFormatter={(value) => new Date(value).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' })}
-                    />
-                    <YAxis tick={{ fill: '#999', fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{ background: '#fff', border: '1px solid #ddd', borderRadius: '8px', fontSize: '12px' }}
-                      labelFormatter={(value) => new Date(value).toLocaleDateString('cs-CZ')}
-                    />
-                    {users.map(user => {
-                      // Mapování barev na hex kódy
-                      const colorMap: {[key: string]: string} = {
-                        'avatar-lime': '#84cc16',
-                        'avatar-coral': '#f87171',
-                        'avatar-blue': '#3b82f6',
-                        'avatar-violet': '#a78bfa',
-                        'avatar-orange': '#fb923c',
-                        'avatar-pink': '#f472b6',
-                        'avatar-cyan': '#06b6d4',
-                        'avatar-yellow': '#eab308',
-                        'avatar-green': '#22c55e',
-                        'avatar-red': '#ef4444',
-                        'avatar-purple': '#a855f7',
-                      }
-                      const color = colorMap[user.color] || '#10b981'
+              <>
+                {/* Pozice a náskok/ztráta */}
+                {positionStats.position > 0 && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🏆 Tvoje pozice</h3>
+                    <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                      <div style={{ fontSize: '3rem', fontWeight: 700, color: '#173b29' }}>{positionStats.position}.</div>
+                      <div style={{ fontSize: '0.875rem', color: '#64748b' }}>z {positionStats.totalUsers} kokotů</div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      {positionStats.pointsBehind !== null ? (
+                        <div style={{ padding: '1rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca', textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#991b1b', marginBottom: '0.5rem' }}>Ztráta na {positionStats.userBehind}</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#dc2626' }}>-{positionStats.pointsBehind.toFixed(1)}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>bodů</div>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#166534', marginBottom: '0.5rem' }}>Jsi první! 🎉</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#15803d' }}>👑</div>
+                        </div>
+                      )}
+                      {positionStats.pointsAhead !== null ? (
+                        <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#166534', marginBottom: '0.5rem' }}>Náskok před {positionStats.userAhead}</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#15803d' }}>+{positionStats.pointsAhead.toFixed(1)}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>bodů</div>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '1rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca', textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#991b1b', marginBottom: '0.5rem' }}>Jsi poslední 😢</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#dc2626' }}>💩</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
+                {/* Streaky (série) */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🔥 Série</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ padding: '1rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#1e40af', marginBottom: '0.25rem' }}>Aktuální bez 🍺</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e3a8a' }}>{userStreaks.currentSoberStreak}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{userStreaks.currentSoberStreak === 1 ? 'den' : 'dní'} v řadě</div>
+                    </div>
+                    <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#166534', marginBottom: '0.25rem' }}>Nejdelší bez 🍺</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#15803d' }}>{userStreaks.longestSoberStreak}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{userStreaks.longestSoberStreak === 1 ? 'den' : 'dní'} v řadě</div>
+                    </div>
+                    <div style={{ padding: '1rem', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#92400e', marginBottom: '0.25rem' }}>Aktuální aktivita</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#b45309' }}>{userStreaks.currentActiveStreak}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{userStreaks.currentActiveStreak === 1 ? 'den' : 'dní'} v řadě</div>
+                    </div>
+                    <div style={{ padding: '1rem', background: '#fce7f3', borderRadius: '8px', border: '1px solid #fbcfe8' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#9f1239', marginBottom: '0.25rem' }}>Nejdelší aktivita</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#be123c' }}>{userStreaks.longestActiveStreak}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{userStreaks.longestActiveStreak === 1 ? 'den' : 'dní'} v řadě</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rozdělení bodů - koláčový graf */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📊 Rozdělení bodů</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Běh', value: pointsBreakdown.behPoints, color: '#3b82f6' },
+                          { name: 'Kolo', value: pointsBreakdown.koloPoints, color: '#10b981' },
+                          { name: 'Bazén', value: pointsBreakdown.bazenPoints, color: '#06b6d4' },
+                          { name: 'Kokotmetr', value: pointsBreakdown.kokotmetrPoints, color: '#f59e0b' },
+                          { name: 'Bez 🍺', value: pointsBreakdown.alcoholPoints, color: '#8b5cf6' }
+                        ].filter(item => item.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {[
+                          { name: 'Běh', value: pointsBreakdown.behPoints, color: '#3b82f6' },
+                          { name: 'Kolo', value: pointsBreakdown.koloPoints, color: '#10b981' },
+                          { name: 'Bazén', value: pointsBreakdown.bazenPoints, color: '#06b6d4' },
+                          { name: 'Kokotmetr', value: pointsBreakdown.kokotmetrPoints, color: '#f59e0b' },
+                          { name: 'Bez 🍺', value: pointsBreakdown.alcoholPoints, color: '#8b5cf6' }
+                        ].filter(item => item.value > 0).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginTop: '1rem', fontSize: '0.875rem' }}>
+                    <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#3b82f6', borderRadius: '2px', marginRight: '0.5rem' }}></span>Běh: <strong>{pointsBreakdown.behPoints.toFixed(1)}</strong></div>
+                    <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#10b981', borderRadius: '2px', marginRight: '0.5rem' }}></span>Kolo: <strong>{pointsBreakdown.koloPoints}</strong></div>
+                    <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#06b6d4', borderRadius: '2px', marginRight: '0.5rem' }}></span>Bazén: <strong>{pointsBreakdown.bazenPoints}</strong></div>
+                    <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#f59e0b', borderRadius: '2px', marginRight: '0.5rem' }}></span>Kokotmetr: <strong>{pointsBreakdown.kokotmetrPoints}</strong></div>
+                    <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#8b5cf6', borderRadius: '2px', marginRight: '0.5rem' }}></span>Bez 🍺: <strong>{pointsBreakdown.alcoholPoints}</strong></div>
+                    <div style={{ fontWeight: 700, color: '#173b29' }}>Celkem: <strong>{pointsBreakdown.totalPoints.toFixed(1)}</strong></div>
+                  </div>
+                </div>
+
+                {/* Denní průměry */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📊 Denní průměry</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', fontSize: '0.875rem' }}>
+                    <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Body za den</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{dailyAverages.avgPointsPerDay.toFixed(1)}</div>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Běh za den</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{dailyAverages.avgBehPerDay.toFixed(1)} km</div>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Kolo za den</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{dailyAverages.avgKoloPerDay.toFixed(1)} km</div>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Bazén za den</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{dailyAverages.avgBazenPerDay.toFixed(1)} km</div>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Kokotmetr za den</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{dailyAverages.avgKokotmetrPerDay.toFixed(0)}</div>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: '#f0f9ff', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                      <div style={{ color: '#1e40af', marginBottom: '0.25rem' }}>Dní bez 🍺</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e3a8a' }}>{dailyAverages.soberDaysPercent.toFixed(0)}%</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nejlepší den */}
+                {bestDay.date && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>⭐ Nejlepší den</h3>
+                    <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#173b29' }}>{new Date(bestDay.date).toLocaleDateString('cs-CZ')}</div>
+                      <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#f59e0b', marginTop: '0.5rem' }}>{bestDay.points.toFixed(1)} bodů</div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', fontSize: '0.875rem' }}>
+                      {bestDay.beh > 0 && (
+                        <div style={{ padding: '0.5rem', background: '#f0f9ff', borderRadius: '6px' }}>
+                          <span style={{ color: '#64748b' }}>Běh:</span> <strong>{bestDay.beh.toFixed(1)} km</strong>
+                        </div>
+                      )}
+                      {bestDay.kolo > 0 && (
+                        <div style={{ padding: '0.5rem', background: '#f0fdf4', borderRadius: '6px' }}>
+                          <span style={{ color: '#64748b' }}>Kolo:</span> <strong>{bestDay.kolo.toFixed(1)} km</strong>
+                        </div>
+                      )}
+                      {bestDay.bazen > 0 && (
+                        <div style={{ padding: '0.5rem', background: '#fef3c7', borderRadius: '6px' }}>
+                          <span style={{ color: '#64748b' }}>Bazén:</span> <strong>{bestDay.bazen.toFixed(1)} km</strong>
+                        </div>
+                      )}
+                      {bestDay.kokotmetr > 0 && (
+                        <div style={{ padding: '0.5rem', background: '#fce7f3', borderRadius: '6px' }}>
+                          <span style={{ color: '#64748b' }}>Kokotmetr:</span> <strong>{bestDay.kokotmetr}</strong>
+                        </div>
+                      )}
+                      {bestDay.no_alcohol && (
+                        <div style={{ padding: '0.5rem', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                          <span style={{ color: '#166534' }}>Bez 🍺</span> <strong>✅</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Konzistence */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🎯 Konzistence</h3>
+                  <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                    <div style={{ fontSize: '4rem', fontWeight: 700, color: consistencyScore.score >= 80 ? '#10b981' : consistencyScore.score >= 60 ? '#f59e0b' : '#ef4444' }}>
+                      {consistencyScore.score}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Skóre konzistence</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', fontSize: '0.875rem' }}>
+                    <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px', textAlign: 'center' }}>
+                      <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Aktivních dní</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{consistencyScore.totalActiveDays}/{consistencyScore.totalDays}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{consistencyScore.activeDaysPercent.toFixed(0)}%</div>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px', textAlign: 'center' }}>
+                      <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Nejdelší pauza</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{consistencyScore.longestGap}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{consistencyScore.longestGap === 1 ? 'den' : 'dní'}</div>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px', textAlign: 'center' }}>
+                      <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Průměrná pauza</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{consistencyScore.averageGap.toFixed(1)}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{consistencyScore.averageGap < 2 ? 'den' : 'dní'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Porovnání s průměrem */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📊 Porovnání s průměrem</h3>
+                  <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                    <div style={{ fontSize: '3rem', fontWeight: 700, color: comparisonToAverage.percentDifference >= 0 ? '#10b981' : '#ef4444' }}>
+                      {comparisonToAverage.percentDifference >= 0 ? '+' : ''}{comparisonToAverage.percentDifference.toFixed(1)}%
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#64748b' }}>oproti průměru skupiny</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>
+                    <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b' }}>Tvoje body</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userPoints.toFixed(1)}</div>
+                    </div>
+                    <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b' }}>Průměr</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.averagePoints.toFixed(1)}</div>
+                    </div>
+                    <div style={{ padding: '0.5rem', background: '#f0f9ff', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b' }}>Tvůj běh</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userBeh.toFixed(1)} km</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageBeh.toFixed(1)} km</div>
+                    </div>
+                    <div style={{ padding: '0.5rem', background: '#f0fdf4', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b' }}>Tvoje kolo</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userKolo.toFixed(1)} km</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageKolo.toFixed(1)} km</div>
+                    </div>
+                    <div style={{ padding: '0.5rem', background: '#fef3c7', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b' }}>Tvůj bazén</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userBazen.toFixed(1)} km</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageBazen.toFixed(1)} km</div>
+                    </div>
+                    <div style={{ padding: '0.5rem', background: '#fce7f3', borderRadius: '6px' }}>
+                      <div style={{ color: '#64748b' }}>Tvůj kokotmetr</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userKokotmetr.toFixed(0)}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageKokotmetr.toFixed(0)}</div>
+                    </div>
+                    <div style={{ padding: '0.5rem', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                      <div style={{ color: '#166534' }}>Dny bez 🍺</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#15803d' }}>{comparisonToAverage.userSoberDays}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageSoberDays.toFixed(1)}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Aktivita podle dní v týdnu */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📅 Aktivita podle dne v týdnu</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '0.5rem' }}>
+                    {dayOfWeekStats.map((day) => {
+                      const maxActivities = Math.max(...dayOfWeekStats.map(d => d.activitiesCount), 1)
+                      const barWidth = (day.activitiesCount / maxActivities) * 100
                       return (
-                        <Line
-                          key={user.id}
-                          type="monotone"
-                          dataKey={user.id}
-                          stroke={color}
-                          strokeWidth={2}
-                          name={user.name}
-                          dot={false}
-                          connectNulls
-                          label={({ x, y, index }: any) => {
-                            if (index !== pointsHistory.length - 1) return null
-                            return (
-                              <text
-                                x={x}
-                                y={y}
-                                fill={color}
-                                fontSize={11}
-                                fontWeight={600}
-                                textAnchor="start"
-                                dx={8}
-                                dy={4}
-                              >
-                                {user.name}
-                              </text>
-                            )
-                          }}
-                        />
+                        <div key={day.dayIndex} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <div style={{ fontWeight: 600, color: '#173b29' }}>{day.dayName}</div>
+                            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                              {day.activitiesCount} aktivit · Ø {day.avgPoints.toFixed(1)} bodů
+                            </div>
+                          </div>
+                          <div style={{ background: '#e2e8f0', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', width: `${barWidth}%`, height: '100%' }} />
+                          </div>
+                        </div>
                       )
                     })}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+                  </div>
+                </div>
+
+                {/* Týdenní přehled */}
+                {weeklyBreakdown.length > 0 && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📊 Týdenní přehled</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
+                      {weeklyBreakdown.map((week) => (
+                        <div key={week.weekNumber} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#173b29' }}>Týden {week.weekNumber}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{week.weekLabel}</div>
+                            </div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10b981' }}>{week.points.toFixed(1)} bodů</div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', fontSize: '0.75rem', marginTop: '0.75rem' }}>
+                            <div>
+                              <div style={{ color: '#64748b' }}>Běh</div>
+                              <div style={{ fontWeight: 600 }}>{week.beh.toFixed(1)} km</div>
+                            </div>
+                            <div>
+                              <div style={{ color: '#64748b' }}>Kolo</div>
+                              <div style={{ fontWeight: 600 }}>{week.kolo.toFixed(1)} km</div>
+                            </div>
+                            <div>
+                              <div style={{ color: '#64748b' }}>Kokotm</div>
+                              <div style={{ fontWeight: 600 }}>{week.kokotmetr}</div>
+                            </div>
+                            <div>
+                              <div style={{ color: '#64748b' }}>Dní bez 🍺</div>
+                              <div style={{ fontWeight: 600 }}>{week.soberDays}</div>
+                            </div>
+                            <div>
+                              <div style={{ color: '#64748b' }}>Aktivních dní</div>
+                              <div style={{ fontWeight: 600 }}>{week.activeDays}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Graf vývoje bodů */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📈 Průběh bodů</h3>
+                  <div style={{ width: '100%', minHeight: '400px' }}>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <LineChart data={pointsHistory} margin={{ top: 5, right: 80, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: '#999', fontSize: 11 }}
+                          tickFormatter={(value) => new Date(value).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' })}
+                        />
+                        <YAxis tick={{ fill: '#999', fontSize: 11 }} />
+                        <Tooltip
+                          contentStyle={{ background: '#fff', border: '1px solid #ddd', borderRadius: '8px', fontSize: '12px' }}
+                          labelFormatter={(value) => new Date(value).toLocaleDateString('cs-CZ')}
+                        />
+                        {users.map(user => {
+                          const colorMap: {[key: string]: string} = {
+                            'avatar-lime': '#84cc16',
+                            'avatar-coral': '#f87171',
+                            'avatar-blue': '#3b82f6',
+                            'avatar-violet': '#a78bfa',
+                            'avatar-orange': '#fb923c',
+                            'avatar-pink': '#f472b6',
+                            'avatar-cyan': '#06b6d4',
+                            'avatar-yellow': '#eab308',
+                            'avatar-green': '#22c55e',
+                            'avatar-red': '#ef4444',
+                            'avatar-purple': '#a855f7',
+                          }
+                          const color = colorMap[user.color] || '#10b981'
+
+                          return (
+                            <Line
+                              key={user.id}
+                              type="monotone"
+                              dataKey={user.id}
+                              stroke={color}
+                              strokeWidth={2}
+                              name={user.name}
+                              dot={false}
+                              connectNulls
+                              label={({ x, y, index }: any) => {
+                                if (index !== pointsHistory.length - 1) return null
+                                return (
+                                  <text
+                                    x={x}
+                                    y={y}
+                                    fill={color}
+                                    fontSize={11}
+                                    fontWeight={600}
+                                    textAnchor="start"
+                                    dx={8}
+                                    dy={4}
+                                  >
+                                    {user.name}
+                                  </text>
+                                )
+                              }}
+                            />
+                          )
+                        })}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </>
             )}
           </section>
         )}
