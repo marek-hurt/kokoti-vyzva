@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import {
   BarChart3,
   Beer,
@@ -407,7 +407,7 @@ export default function Page() {
                 </div>
               </div>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div className="wide-section" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', fontSize: '0.875rem', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #333' }}>
@@ -521,6 +521,72 @@ export default function Page() {
               </table>
             </div>
           </section>
+          )
+        })()}
+
+        {activeTab === 'daily' && (() => {
+          const sortedActivityDates = activities.map(a => a.date).sort()
+          const dailyDates: string[] = []
+          if (sortedActivityDates.length > 0) {
+            const minDate = new Date(`${sortedActivityDates[0]}T00:00:00Z`)
+            const maxDate = new Date(`${sortedActivityDates[sortedActivityDates.length - 1]}T00:00:00Z`)
+            for (let d = minDate; d <= maxDate; d.setUTCDate(d.getUTCDate() + 1)) {
+              dailyDates.push(d.toISOString().split('T')[0])
+            }
+          }
+
+          return (
+            <section style={{ padding: '1rem', marginBottom: '5rem' }}>
+              <div className="section-heading" style={{ marginBottom: '1rem' }}>
+                <div><p className="eyebrow">PODLE DNŮ</p><h2>Denní <span>přehled</span></h2></div>
+              </div>
+
+              <div className="wide-section" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #333' }}>
+                      <th rowSpan={2} style={{ padding: '0.5rem', textAlign: 'left', fontWeight: 600, verticalAlign: 'bottom' }}>Datum</th>
+                      {users.map(user => (
+                        <th key={user.id} colSpan={3} style={{ padding: '0.5rem', textAlign: 'center', fontWeight: 700, borderLeft: '1px solid #333' }}>{user.name}</th>
+                      ))}
+                    </tr>
+                    <tr style={{ borderBottom: '2px solid #333' }}>
+                      {users.map(user => (
+                        <Fragment key={user.id}>
+                          <th style={{ padding: '0.4rem', textAlign: 'right', fontWeight: 600, fontSize: '0.7rem', color: '#888', borderLeft: '1px solid #333' }}>body</th>
+                          <th style={{ padding: '0.4rem', textAlign: 'right', fontWeight: 600, fontSize: '0.7rem', color: '#888' }}>kokotm</th>
+                          <th style={{ padding: '0.4rem', textAlign: 'center', fontWeight: 600, fontSize: '0.7rem', color: '#888' }}>🍺</th>
+                        </Fragment>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailyDates.map(date => (
+                      <tr key={date} style={{ borderBottom: '1px solid #222' }}>
+                        <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{new Date(date).toLocaleDateString('cs-CZ')}</td>
+                        {users.map(user => {
+                          const activity = activities.find(a => a.date === date && a.user_id === user.id)
+                          const noAlcohol = activity ? activity.no_alcohol : false
+                          const bg = noAlcohol ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)'
+                          const points = activity
+                            ? Math.floor(activity.beh) + Math.floor(activity.kolo / 10) * 2 + Math.floor(activity.bazen) * 2 + (activity.no_alcohol ? 1 : 0)
+                            : 0
+                          const kokotmetr = activity ? activity.kokotmetr : 0
+
+                          return (
+                            <Fragment key={user.id}>
+                              <td style={{ padding: '0.5rem', textAlign: 'right', background: bg, borderLeft: '1px solid #222' }}>{points}</td>
+                              <td style={{ padding: '0.5rem', textAlign: 'right', background: bg }}>{kokotmetr}</td>
+                              <td style={{ padding: '0.5rem', textAlign: 'center', background: bg }}>{noAlcohol ? '✅' : '🍺'}</td>
+                            </Fragment>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           )
         })()}
 
@@ -670,6 +736,7 @@ export default function Page() {
         <nav className="bottom-nav" aria-label="Hlavní navigace">
           <button className={activeTab === 'home' ? 'active' : ''} onClick={() => setActiveTab('home')}><Home /><span>Domů</span></button>
           <button className={activeTab === 'table' ? 'active' : ''} onClick={() => setActiveTab('table')}><Table /><span>Tabulka</span></button>
+          <button className={activeTab === 'daily' ? 'active' : ''} onClick={() => setActiveTab('daily')}><CalendarDays /><span>Po dnech</span></button>
           <button className={activeTab === 'stats' ? 'active' : ''} onClick={() => setActiveTab('stats')}><BarChart3 /><span>Statistiky</span></button>
           <button className={activeTab === 'info' ? 'active' : ''} onClick={() => setActiveTab('info')}><CircleHelp /><span>Info</span></button>
         </nav>
