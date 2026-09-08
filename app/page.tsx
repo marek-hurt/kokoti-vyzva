@@ -58,13 +58,27 @@ export default function Page() {
       setUsers(usersData)
       setActivities(activitiesData)
       setPointsHistory(historyData)
+
+      // Načíst vybraného uživatele z localStorage nebo použít prvního
       if (usersData.length > 0 && !selectedUserId) {
-        setSelectedUserId(usersData[0].id)
+        const savedUserId = localStorage.getItem('selectedUserId')
+        if (savedUserId && usersData.find(u => u.id === savedUserId)) {
+          setSelectedUserId(savedUserId)
+        } else {
+          setSelectedUserId(usersData[0].id)
+        }
       }
       setLoading(false)
     }
     fetchData()
   }, [])
+
+  // Uložit vybraného uživatele do localStorage při změně
+  useEffect(() => {
+    if (selectedUserId) {
+      localStorage.setItem('selectedUserId', selectedUserId)
+    }
+  }, [selectedUserId])
 
   // Funkce pro přidání aktivity
   async function handleSubmit() {
