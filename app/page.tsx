@@ -59,10 +59,16 @@ export default function Page() {
       setActivities(activitiesData)
       setPointsHistory(historyData)
 
-      // Načíst vybraného uživatele z localStorage nebo použít prvního
+      // Vybrat uživatele podle URL parametru ?kokot=Jmeno, jinak z localStorage, jinak prvního
       if (usersData.length > 0 && !selectedUserId) {
+        const kokotParam = new URLSearchParams(window.location.search).get('kokot')
+        const userFromParam = kokotParam
+          ? usersData.find(u => u.name.toLowerCase() === kokotParam.toLowerCase())
+          : undefined
         const savedUserId = localStorage.getItem('selectedUserId')
-        if (savedUserId && usersData.find(u => u.id === savedUserId)) {
+        if (userFromParam) {
+          setSelectedUserId(userFromParam.id)
+        } else if (savedUserId && usersData.find(u => u.id === savedUserId)) {
           setSelectedUserId(savedUserId)
         } else {
           setSelectedUserId(usersData[0].id)
@@ -161,6 +167,8 @@ export default function Page() {
     }
   }
 
+  const selectedUser = users.find(u => u.id === selectedUserId)
+
   return (
     <main className="app-shell">
       <div className="app-inner">
@@ -172,7 +180,12 @@ export default function Page() {
               <h1>Dokážeš-li to, <span>není to jen sen!</span></h1>
             </div>
           </div>
-          <button className="profile-button" aria-label="Otevřít profil"><span>MK</span></button>
+          {selectedUser && (
+            <div className="profile-lockup">
+              <span className="profile-name">Kokot {selectedUser.name}</span>
+              <button className="profile-button" aria-label="Otevřít profil"><span>{selectedUser.initials}</span></button>
+            </div>
+          )}
         </header>
 
         {activeTab === 'home' && <>
