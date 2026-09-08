@@ -1,0 +1,37 @@
+{
+  "name": "Kokotí Výzva - Běžecká výzva mezi přáteli",
+  "short_name": "Kokotí Výzva",
+  "description": "Moderní tracker běžecké výzvy. Sleduj kilometry, převýšení a dny bez alkoholu.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["health", "fitness", "sports"],
+  "screenshots": [
+    {
+      "src": "/screenshot.png",
+      "sizes": "750x1334",
+      "type": "image/png"
+    }
+  ]
+}
