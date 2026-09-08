@@ -951,3 +951,238 @@ export async function getComparisonToAverage(userId: string, startDate?: string,
     averageSoberDays: totalSoberDays / count
   }
 }
+
+export type Badge = {
+  id: string
+  name: string
+  description: string
+  emoji: string
+  type: 'shame' | 'achievement' | 'weekly'
+  unlocked: boolean
+  unlockedAt?: string
+}
+
+export type Achievements = {
+  badges: Badge[]
+  weeklyBadges: {
+    mrdkaTydne: { userId: string | null; userName: string | null } // Nejlínější kokot týdne
+    alkacTydne: { userId: string | null; userName: string | null } // Nejvíc dní s alkoholem tento týden
+    comebackTydne: { userId: string | null; userName: string | null } // Největší zlepšení tento týden
+  }
+  shameLevel: number // 0-100, jak moc by se měl stydět
+}
+
+export async function getAchievements(userId: string, startDate?: string, endDate?: string): Promise<Achievements> {
+  // Načíst všechny potřebné statistiky
+  const [consistency, streaks, dailyAverages, leaderboard] = await Promise.all([
+    getConsistencyScore(userId, startDate, endDate),
+    getUserStreaks(userId, startDate, endDate),
+    getDailyAverages(userId, startDate, endDate),
+    getLeaderboard(startDate, endDate)
+  ])
+
+  const badges: Badge[] = []
+
+  // 🔥 Iron Kokot - 7 dní v řadě s aktivitou
+  badges.push({
+    id: 'iron-kokot',
+    name: 'Iron Kokot',
+    description: '7 dní v řadě s aktivitou',
+    emoji: '🔥',
+    type: 'achievement',
+    unlocked: streaks.longestActiveStreak >= 7
+  })
+
+  // 💀 Týden Nula - Celý týden bez aktivity
+  badges.push({
+    id: 'tyden-nula',
+    name: 'Týden Nula',
+    description: 'Celý týden bez aktivity... hanba!',
+    emoji: '💀',
+    type: 'shame',
+    unlocked: consistency.longestGap >= 7
+  })
+
+  // 🍺 Alkáč - Méně než 30% dní bez alkoholu
+  const soberPercent = (dailyAverages.soberDaysPercent || 0)
+  badges.push({
+    id: 'alkac',
+    name: 'Alkáč',
+    description: 'Méně než 30% dní bez alkoholu',
+    emoji: '🍺',
+    type: 'shame',
+    unlocked: soberPercent < 30
+  })
+
+  // 😴 Gauge of Shame - Pod 50% aktivity
+  badges.push({
+    id: 'gauge-of-shame',
+    name: 'Gauge of Shame',
+    description: 'Pod 50% aktivních dní',
+    emoji: '😴',
+    type: 'shame',
+    unlocked: consistency.activeDaysPercent < 50
+  })
+
+  // 🏃 Běžecká legenda - Více než 100 km běhu
+  let query = supabase
+    .from('activities')
+    .select('beh')
+    .eq('user_id', userId)
+
+  if (startDate) query = query.gte('date', startDate)
+  if (endDate) query = query.lte('date', endDate)
+
+  const { data: activities } = await query
+  const totalBeh = activities?.reduce((sum, a) => sum + a.beh, 0) || 0
+
+  badges.push({
+    id: 'bezecka-legenda',
+    name: 'Běžecká Legenda',
+    description: 'Více než 100 km běhu',
+    emoji: '🏃',
+    type: 'achievement',
+    unlocked: totalBeh >= 100
+  })
+
+  // 🚴 Cyklista - Více než 500 km na kole
+  const totalKolo = activities?.reduce((sum, a) => sum + a.kolo, 0) || 0
+  badges.push({
+    id: 'cyklista',
+    name: 'Cyklista',
+    description: 'Více než 500 km na kole',
+    emoji: '🚴',
+    type: 'achievement',
+    unlocked: totalKolo >= 500
+  })
+
+  // 🏔️ Horolezec - Více než 5000 kokotmetrů
+  const totalKokotmetr = activities?.reduce((sum, a) => sum + a.kokotmetr, 0) || 0
+  badges.push({
+    id: 'horolezec',
+    name: 'Horolezec',
+    description: 'Více než 5000 kokotmetrů',
+    emoji: '🏔️',
+    type: 'achievement',
+    unlocked: totalKokotmetr >= 5000
+  })
+
+  // 😇 Střízlivec - Více než 80% dní bez alkoholu
+  badges.push({
+    id: 'strizlivec',
+    name: 'Střízlivec',
+    description: 'Více než 80% dní bez alkoholu',
+    emoji: '😇',
+    type: 'achievement',
+    unlocked: soberPercent >= 80
+  })
+
+  // 💯 Perfekcionista - 100% aktivních dní
+  badges.push({
+    id: 'perfekcionista',
+    name: 'Perfekcionista',
+    description: '100% aktivních dní',
+    emoji: '💯',
+    type: 'achievement',
+    unlocked: consistency.activeDaysPercent === 100
+  })
+
+  // 🐌 Šnek - Konzistence nad 80, ale méně než 100 bodů celkem
+  const userEntry = leaderboard.find(u => u.id === userId)
+  const totalPoints = userEntry?.total_points || 0
+  badges.push({
+    id: 'snek',
+    name: 'Konzistentní Šnek',
+    description: 'Skvělá konzistence, ale pomalý výkon',
+    emoji: '🐌',
+    type: 'achievement',
+    unlocked: consistency.score >= 80 && totalPoints < 100
+  })
+
+  // 💪 Warrior - Více než 200 bodů
+  badges.push({
+    id: 'warrior',
+    name: 'Warrior',
+    description: 'Více než 200 bodů',
+    emoji: '💪',
+    type: 'achievement',
+    unlocked: totalPoints >= 200
+  })
+
+  // Týdenní badges - počítáme z posledního týdne
+  const now = new Date()
+  const weekAgo = new Date(now)
+  weekAgo.setDate(now.getDate() - 7)
+  const weekAgoStr = weekAgo.toISOString().split('T')[0]
+  const nowStr = now.toISOString().split('T')[0]
+
+  // Načíst data za poslední týden pro všechny uživatele
+  const weeklyQuery = supabase
+    .from('activities')
+    .select('*, users!inner(name)')
+    .gte('date', weekAgoStr)
+    .lte('date', nowStr)
+
+  const { data: weeklyActivities } = await weeklyQuery
+
+  // Mrdka týdne - nejméně aktivních dní tento týden
+  const weeklyUserStats = new Map<string, { name: string; activeDays: number; soberDays: number }>()
+
+  weeklyActivities?.forEach(activity => {
+    if (!weeklyUserStats.has(activity.user_id)) {
+      weeklyUserStats.set(activity.user_id, {
+        name: (activity.users as any).name,
+        activeDays: 0,
+        soberDays: 0
+      })
+    }
+    const stats = weeklyUserStats.get(activity.user_id)!
+    if (activity.beh > 0 || activity.kolo > 0 || activity.bazen > 0 || activity.kokotmetr > 0) {
+      stats.activeDays++
+    }
+    if (activity.no_alcohol) {
+      stats.soberDays++
+    }
+  })
+
+  let mrdkaTydne = { userId: null as string | null, userName: null as string | null }
+  let minActiveDays = Infinity
+  weeklyUserStats.forEach((stats, uid) => {
+    if (stats.activeDays < minActiveDays) {
+      minActiveDays = stats.activeDays
+      mrdkaTydne = { userId: uid, userName: stats.name }
+    }
+  })
+
+  // Alkáč týdne - nejvíc dní s alkoholem (nejméně sober days)
+  let alkacTydne = { userId: null as string | null, userName: null as string | null }
+  let minSoberDays = Infinity
+  weeklyUserStats.forEach((stats, uid) => {
+    if (stats.soberDays < minSoberDays) {
+      minSoberDays = stats.soberDays
+      alkacTydne = { userId: uid, userName: stats.name }
+    }
+  })
+
+  // Comeback týdne - největší zlepšení oproti předchozímu týdnu
+  // (Pro zjednodušení zatím null, můžeme rozšířit později)
+  const comebackTydne = { userId: null as string | null, userName: null as string | null }
+
+  // Shame level (0-100)
+  let shameLevel = 0
+  if (consistency.activeDaysPercent < 50) shameLevel += 30
+  if (soberPercent < 30) shameLevel += 25
+  if (consistency.longestGap >= 7) shameLevel += 25
+  if (totalPoints < 50) shameLevel += 20
+  shameLevel = Math.min(100, shameLevel)
+
+  return {
+    badges,
+    weeklyBadges: {
+      mrdkaTydne,
+      alkacTydne,
+      comebackTydne
+    },
+    shameLevel
+  }
+}

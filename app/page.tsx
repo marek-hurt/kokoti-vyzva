@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage } from '@/lib/supabase'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements } from '@/lib/supabase'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, PieChart, Pie, Cell } from 'recharts'
 
 export default function Page() {
@@ -60,6 +60,7 @@ export default function Page() {
   const [dayOfWeekStats, setDayOfWeekStats] = useState<DayOfWeekStats[] | null>(null)
   const [consistencyScore, setConsistencyScore] = useState<ConsistencyScore | null>(null)
   const [comparisonToAverage, setComparisonToAverage] = useState<ComparisonToAverage | null>(null)
+  const [achievements, setAchievements] = useState<Achievements | null>(null)
   const entryFormRef = useRef<HTMLElement>(null)
 
   const CORRECT_PASSWORD = 'Vymrdanec2026*'
@@ -180,7 +181,7 @@ export default function Page() {
   useEffect(() => {
     async function loadStats() {
       if (statsUserId) {
-        const [streaks, breakdown, position, averages, best, weekly, dayOfWeek, consistency, comparison] = await Promise.all([
+        const [streaks, breakdown, position, averages, best, weekly, dayOfWeek, consistency, comparison, achievementsData] = await Promise.all([
           getUserStreaks(statsUserId, challengeStart, challengeEnd),
           getPointsBreakdown(statsUserId, challengeStart, challengeEnd),
           getPositionStats(statsUserId, challengeStart, challengeEnd),
@@ -189,7 +190,8 @@ export default function Page() {
           getWeeklyBreakdown(statsUserId, challengeStart, challengeEnd),
           getDayOfWeekStats(statsUserId, challengeStart, challengeEnd),
           getConsistencyScore(statsUserId, challengeStart, challengeEnd),
-          getComparisonToAverage(statsUserId, challengeStart, challengeEnd)
+          getComparisonToAverage(statsUserId, challengeStart, challengeEnd),
+          getAchievements(statsUserId, challengeStart, challengeEnd)
         ])
         setUserStreaks(streaks)
         setPointsBreakdown(breakdown)
@@ -200,6 +202,7 @@ export default function Page() {
         setDayOfWeekStats(dayOfWeek)
         setConsistencyScore(consistency)
         setComparisonToAverage(comparison)
+        setAchievements(achievementsData)
       }
     }
     loadStats()
@@ -816,10 +819,114 @@ export default function Page() {
               </select>
             </div>
 
-            {loading || !userStreaks || !pointsBreakdown || !positionStats || !dailyAverages || !bestDay || !weeklyBreakdown || !dayOfWeekStats || !consistencyScore || !comparisonToAverage ? (
+            {loading || !userStreaks || !pointsBreakdown || !positionStats || !dailyAverages || !bestDay || !weeklyBreakdown || !dayOfWeekStats || !consistencyScore || !comparisonToAverage || !achievements ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Načítám data...</div>
             ) : (
               <>
+                {/* Gauge of Shame - pokud je nad 50 */}
+                {achievements.shameLevel > 50 && (
+                  <div style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', padding: '1.5rem', borderRadius: '16px', marginBottom: '1.5rem', color: '#fff', textAlign: 'center', boxShadow: '0 4px 20px rgba(239, 68, 68, 0.3)' }}>
+                    <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>😱 GAUGE OF SHAME</h3>
+                    <div style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '1rem' }}>Tvoje úroveň hanby</div>
+                    <div style={{ position: 'relative', height: '20px', background: 'rgba(255,255,255,0.2)', borderRadius: '10px', overflow: 'hidden', marginBottom: '0.5rem' }}>
+                      <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${achievements.shameLevel}%`, background: '#fff', borderRadius: '10px', transition: 'width 0.5s ease' }} />
+                    </div>
+                    <div style={{ fontSize: '3rem', fontWeight: 700 }}>{achievements.shameLevel}%</div>
+                    <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                      {achievements.shameLevel >= 80 ? 'Kokot!! Pohni sebou!' : achievements.shameLevel >= 60 ? 'Dost slabý výkon...' : 'Trochu se snaž víc'}
+                    </div>
+                  </div>
+                )}
+
+                {/* Týdenní hanby/ocenění */}
+                {(achievements.weeklyBadges.mrdkaTydne.userName || achievements.weeklyBadges.alkacTydne.userName) && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🏅 Týdenní (ne)ocenění</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      {achievements.weeklyBadges.mrdkaTydne.userName && (
+                        <div style={{
+                          padding: '1rem',
+                          borderRadius: '8px',
+                          border: '2px solid',
+                          borderColor: achievements.weeklyBadges.mrdkaTydne.userId === statsUserId ? '#ef4444' : '#e3ece4',
+                          background: achievements.weeklyBadges.mrdkaTydne.userId === statsUserId ? '#fef2f2' : '#f8fafc',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💩</div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#173b29', marginBottom: '0.25rem' }}>Mrdka týdne</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#ef4444' }}>{achievements.weeklyBadges.mrdkaTydne.userName}</div>
+                          {achievements.weeklyBadges.mrdkaTydne.userId === statsUserId && (
+                            <div style={{ fontSize: '0.75rem', color: '#991b1b', marginTop: '0.5rem' }}>To jsi ty!! 🤦</div>
+                          )}
+                        </div>
+                      )}
+                      {achievements.weeklyBadges.alkacTydne.userName && (
+                        <div style={{
+                          padding: '1rem',
+                          borderRadius: '8px',
+                          border: '2px solid',
+                          borderColor: achievements.weeklyBadges.alkacTydne.userId === statsUserId ? '#f59e0b' : '#e3ece4',
+                          background: achievements.weeklyBadges.alkacTydne.userId === statsUserId ? '#fffbeb' : '#f8fafc',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🍺</div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#173b29', marginBottom: '0.25rem' }}>Alkáč týdne</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#f59e0b' }}>{achievements.weeklyBadges.alkacTydne.userName}</div>
+                          {achievements.weeklyBadges.alkacTydne.userId === statsUserId && (
+                            <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: '0.5rem' }}>Pěkně se zapíjí! 🍻</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Achievements grid */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🏆 Achievements & Badges</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                    {achievements.badges.map((badge) => (
+                      <div
+                        key={badge.id}
+                        style={{
+                          padding: '1rem',
+                          borderRadius: '8px',
+                          border: '2px solid',
+                          borderColor: badge.unlocked
+                            ? (badge.type === 'shame' ? '#ef4444' : '#10b981')
+                            : '#e3ece4',
+                          background: badge.unlocked
+                            ? (badge.type === 'shame' ? '#fef2f2' : '#f0fdf4')
+                            : '#f8fafc',
+                          opacity: badge.unlocked ? 1 : 0.4,
+                          textAlign: 'center',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem', filter: badge.unlocked ? 'none' : 'grayscale(100%)' }}>
+                          {badge.emoji}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#173b29', marginBottom: '0.25rem' }}>
+                          {badge.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          {badge.description}
+                        </div>
+                        {badge.unlocked && badge.type === 'shame' && (
+                          <div style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: '0.5rem', fontWeight: 600 }}>
+                            ODEMČENO!
+                          </div>
+                        )}
+                        {badge.unlocked && badge.type === 'achievement' && (
+                          <div style={{ fontSize: '0.7rem', color: '#10b981', marginTop: '0.5rem', fontWeight: 600 }}>
+                            ✓ ZÍSKÁNO
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Pozice a náskok/ztráta */}
                 {positionStats.position > 0 && (
                   <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
