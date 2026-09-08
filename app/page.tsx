@@ -47,15 +47,39 @@ export default function Page() {
   const [isSettingsUnlocked, setIsSettingsUnlocked] = useState(false)
   const [challengeStart, setChallengeStart] = useState('2026-10-04')
   const [challengeEnd, setChallengeEnd] = useState('2026-11-12')
+  const [globalPassword, setGlobalPassword] = useState('')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [showLoginScreen, setShowLoginScreen] = useState(true)
   const entryFormRef = useRef<HTMLElement>(null)
 
-  // Načíst nastavení výzvy z localStorage
+  const CORRECT_PASSWORD = 'Vymrdanec2026*'
+
+  // Načíst nastavení výzvy a heslo z localStorage
   useEffect(() => {
     const savedStart = localStorage.getItem('challengeStart')
     const savedEnd = localStorage.getItem('challengeEnd')
+    const savedPassword = localStorage.getItem('globalPassword')
+
     if (savedStart) setChallengeStart(savedStart)
     if (savedEnd) setChallengeEnd(savedEnd)
+
+    if (savedPassword === CORRECT_PASSWORD) {
+      setIsAuthenticated(true)
+      setShowLoginScreen(false)
+    }
   }, [])
+
+  // Funkce pro přihlášení
+  function handleLogin() {
+    if (globalPassword === CORRECT_PASSWORD) {
+      localStorage.setItem('globalPassword', globalPassword)
+      setIsAuthenticated(true)
+      setShowLoginScreen(false)
+    } else {
+      alert('Špatné heslo!')
+      setGlobalPassword('')
+    }
+  }
 
   // Výpočet průběhu výzvy
   const startDate = new Date(challengeStart)
@@ -102,17 +126,25 @@ export default function Page() {
     fetchData()
   }, [])
 
-  // Uložit vybraného uživatele do localStorage při změně
+  // Uložit vybraného uživatele do localStorage a URL při změně
   useEffect(() => {
-    if (selectedUserId) {
-      localStorage.setItem('selectedUserId', selectedUserId)
+    if (selectedUserId && users.length > 0) {
+      const user = users.find(u => u.id === selectedUserId)
+      if (user) {
+        localStorage.setItem('selectedUserId', selectedUserId)
+
+        // Aktualizovat URL parametr ?kokot=Jméno
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.set('kokot', user.name)
+        window.history.replaceState({}, '', newUrl.toString())
+      }
     }
-  }, [selectedUserId])
+  }, [selectedUserId, users])
 
 
   // Funkce pro přidání aktivity
   async function handleSubmit() {
-    if (!selectedUserId) return
+    if (!selectedUserId || !isAuthenticated) return
 
     const today = new Date().toISOString().split('T')[0]
     const result = await addActivity({
@@ -143,6 +175,7 @@ export default function Page() {
 
   // Funkce pro smazání aktivity
   async function handleDelete(id: string) {
+    if (!isAuthenticated) return
     if (!confirm('Opravdu smazat tento záznam?')) return
 
     const success = await deleteActivity(id)
@@ -170,6 +203,8 @@ export default function Page() {
 
   // Funkce pro uložení úpravy
   async function saveEdit(id: string) {
+    if (!isAuthenticated) return
+
     const result = await updateActivity(id, {
       beh: parseFloat(editValues.beh),
       kolo: parseFloat(editValues.kolo),
@@ -192,6 +227,66 @@ export default function Page() {
   }
 
   const selectedUser = users.find(u => u.id === selectedUserId)
+
+  // Login obrazovka
+  if (showLoginScreen) {
+    return (
+      <main className="app-shell">
+        <div className="app-inner" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '100vh', padding: '2rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', marginBottom: '1.5rem' }}>
+              <Trophy size={40} color="#fff" />
+            </div>
+            <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#173b29', marginBottom: '0.5rem' }}>Kokotí Výzva</h1>
+            <p style={{ fontSize: '1rem', color: '#888' }}>Dokážeš-li to, není to jen sen!</p>
+          </div>
+
+          <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', border: '1px solid #e3ece4', maxWidth: '400px', margin: '0 auto', width: '100%' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29', textAlign: 'center' }}>🔒 Přihlášení</h2>
+            <p style={{ fontSize: '0.875rem', color: '#666', textAlign: 'center', marginBottom: '1.5rem' }}>Zadej heslo pro přístup k výzvě</p>
+
+            <input
+              type="password"
+              value={globalPassword}
+              onChange={(e) => setGlobalPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleLogin()
+              }}
+              placeholder="Heslo..."
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '8px',
+                border: '1px solid #d8e7da',
+                fontSize: '1rem',
+                textAlign: 'center',
+                marginBottom: '1rem'
+              }}
+              autoFocus
+            />
+
+            <button
+              onClick={handleLogin}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#fff',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+              }}
+            >
+              Přihlásit se
+            </button>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="app-shell">
