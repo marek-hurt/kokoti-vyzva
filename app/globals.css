@@ -24,6 +24,9 @@ button { cursor: pointer; }
 
 .app-shell { min-height: 100vh; background: radial-gradient(circle at 72% -10%, #d5f4db 0, transparent 33rem), var(--background); }
 .app-inner { width: min(100%, 540px); margin: 0 auto; padding: 25px 18px 110px; }
+@media (min-width: 900px) {
+  .wide-section { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); padding-left: max(18px, calc((100vw - 1200px) / 2)); padding-right: max(18px, calc((100vw - 1200px) / 2)); box-sizing: border-box; }
+}
 .topbar, .brand-lockup, .runner-top, .entry-heading, .section-heading, .week-card, .week-label, .date-pill { display: flex; align-items: center; }
 .topbar, .section-heading, .entry-heading { justify-content: space-between; }
 .brand-lockup { gap: 11px; }
