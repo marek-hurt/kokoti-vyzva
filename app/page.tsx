@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements } from '@/lib/supabase'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage } from '@/lib/supabase'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, PieChart, Pie, Cell } from 'recharts'
 
 export default function Page() {
@@ -61,6 +61,7 @@ export default function Page() {
   const [consistencyScore, setConsistencyScore] = useState<ConsistencyScore | null>(null)
   const [comparisonToAverage, setComparisonToAverage] = useState<ComparisonToAverage | null>(null)
   const [achievements, setAchievements] = useState<Achievements | null>(null)
+  const [trashTalk, setTrashTalk] = useState<TrashTalkMessage[]>([])
   const entryFormRef = useRef<HTMLElement>(null)
 
   const CORRECT_PASSWORD = 'Vymrdanec2026*'
@@ -181,7 +182,7 @@ export default function Page() {
   useEffect(() => {
     async function loadStats() {
       if (statsUserId) {
-        const [streaks, breakdown, position, averages, best, weekly, dayOfWeek, consistency, comparison, achievementsData] = await Promise.all([
+        const [streaks, breakdown, position, averages, best, weekly, dayOfWeek, consistency, comparison, achievementsData, trashTalkData] = await Promise.all([
           getUserStreaks(statsUserId, challengeStart, challengeEnd),
           getPointsBreakdown(statsUserId, challengeStart, challengeEnd),
           getPositionStats(statsUserId, challengeStart, challengeEnd),
@@ -191,7 +192,8 @@ export default function Page() {
           getDayOfWeekStats(statsUserId, challengeStart, challengeEnd),
           getConsistencyScore(statsUserId, challengeStart, challengeEnd),
           getComparisonToAverage(statsUserId, challengeStart, challengeEnd),
-          getAchievements(statsUserId, challengeStart, challengeEnd)
+          getAchievements(statsUserId, challengeStart, challengeEnd),
+          getTrashTalkFeed(statsUserId, challengeStart, challengeEnd)
         ])
         setUserStreaks(streaks)
         setPointsBreakdown(breakdown)
@@ -203,6 +205,7 @@ export default function Page() {
         setConsistencyScore(consistency)
         setComparisonToAverage(comparison)
         setAchievements(achievementsData)
+        setTrashTalk(trashTalkData)
       }
     }
     loadStats()
@@ -834,6 +837,39 @@ export default function Page() {
                     <div style={{ fontSize: '3rem', fontWeight: 700 }}>{achievements.shameLevel}%</div>
                     <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
                       {achievements.shameLevel >= 80 ? 'Kokot!! Pohni sebou!' : achievements.shameLevel >= 60 ? 'Dost slabý výkon...' : 'Nejen že si tady navíc, ale si taky k tomu navíc ještě tlustej!'}
+                    </div>
+                  </div>
+                )}
+
+                {/* Instantní hejt */}
+                {trashTalk.length > 0 && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>💬 Instantní hejt</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {trashTalk.map((msg) => {
+                        const bgColor = msg.severity === 'brutal' ? '#fef2f2' : msg.severity === 'medium' ? '#fffbeb' : '#f0fdf4'
+                        const borderColor = msg.severity === 'brutal' ? '#fecaca' : msg.severity === 'medium' ? '#fef3c7' : '#bbf7d0'
+                        const textColor = msg.severity === 'brutal' ? '#991b1b' : msg.severity === 'medium' ? '#92400e' : '#166534'
+
+                        return (
+                          <div
+                            key={msg.id}
+                            style={{
+                              padding: '1rem',
+                              background: bgColor,
+                              border: `2px solid ${borderColor}`,
+                              borderRadius: '8px',
+                              fontSize: '0.875rem',
+                              color: textColor,
+                              fontWeight: 600,
+                              position: 'relative',
+                              paddingLeft: '1rem'
+                            }}
+                          >
+                            {msg.message}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}

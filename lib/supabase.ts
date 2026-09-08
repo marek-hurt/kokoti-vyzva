@@ -1176,3 +1176,136 @@ export async function getAchievements(userId: string, startDate?: string, endDat
     shameLevel
   }
 }
+
+export type TrashTalkMessage = {
+  id: string
+  type: 'overtaken' | 'inactive' | 'last_place' | 'drinking' | 'comeback' | 'lazy'
+  message: string
+  timestamp: string
+  severity: 'brutal' | 'medium' | 'light'
+}
+
+export async function getTrashTalkFeed(userId: string, startDate?: string, endDate?: string): Promise<TrashTalkMessage[]> {
+  const messages: TrashTalkMessage[] = []
+
+  // Získat aktuální data
+  const [leaderboard, activities, consistency] = await Promise.all([
+    getLeaderboard(startDate, endDate),
+    supabase
+      .from('activities')
+      .select('*, users!inner(name)')
+      .eq('user_id', userId)
+      .gte('date', startDate || '1970-01-01')
+      .lte('date', endDate || '9999-12-31')
+      .order('date', { ascending: false })
+      .then(res => res.data || []),
+    getConsistencyScore(userId, startDate, endDate)
+  ])
+
+  const userPosition = leaderboard.findIndex(u => u.id === userId)
+  const userName = leaderboard[userPosition]?.name || 'Kokot'
+
+  // 1. Někdo tě předběhl v žebříčku
+  if (userPosition > 0) {
+    const userAhead = leaderboard[userPosition - 1]
+    const pointsDiff = userAhead.total_points - leaderboard[userPosition].total_points
+
+    if (pointsDiff < 20) {
+      messages.push({
+        id: 'overtaken-close',
+        type: 'overtaken',
+        message: `${userAhead.name} tě právě předběhl o ${pointsDiff.toFixed(1)} bodů, ty pičo! 😱`,
+        timestamp: new Date().toISOString(),
+        severity: 'brutal'
+      })
+    } else {
+      messages.push({
+        id: 'overtaken-far',
+        type: 'overtaken',
+        message: `${userAhead.name} je před tebou o ${pointsDiff.toFixed(1)} bodů. Proč tu vůbec seš? 🤦`,
+        timestamp: new Date().toISOString(),
+        severity: 'medium'
+      })
+    }
+  }
+
+  // 2. Jsi poslední
+  if (userPosition === leaderboard.length - 1 && leaderboard.length > 1) {
+    const messages_last = [
+      'Nebolí tě prdel z toho sudu? 🍺',
+      'Gratuluju, jsi poslední! 💩',
+      'Aspoň že máš jistý sud... 😂',
+      'Poslední kokot platí! 🤡'
+    ]
+    messages.push({
+      id: 'last-place',
+      type: 'last_place',
+      message: messages_last[Math.floor(Math.random() * messages_last.length)],
+      timestamp: new Date().toISOString(),
+      severity: 'brutal'
+    })
+  }
+
+  // 3. Máš 3+ dny bez aktivity
+  if (consistency.longestGap >= 3) {
+    const gapMessages = [
+      `Už ${consistency.longestGap} dní nic... Chcípnul si ty mrdko? 💀`,
+      `${consistency.longestGap} dní pauza? To se seš asi fakt dobře najedl! 🐷`,
+      `${consistency.longestGap} dní klid zbraní? Já ti dám klid! 😤`,
+    ]
+    messages.push({
+      id: 'inactive',
+      type: 'inactive',
+      message: gapMessages[consistency.longestGap >= 7 ? 0 : 1],
+      timestamp: new Date().toISOString(),
+      severity: consistency.longestGap >= 7 ? 'brutal' : 'medium'
+    })
+  }
+
+  // 4. Někdo má den s pivem (kontrola posledních 3 dní)
+  const recentDrinking = activities.slice(0, 3).filter(a => !a.no_alcohol)
+  if (recentDrinking.length > 0) {
+    const drinkingMessages = [
+      `${userName} zase chlastat, klasika 🍺`,
+      `Takže pivo ano, běhání ne? Dobrá strategie pro mrdku jako ${userName}! 🤦`,
+      `${userName} má jasně nastavený priority: 🍺 > 🏃`,
+      `Vidím že ${userName} chlastá, místo aby zvedl prdel od kompu`,
+    ]
+    messages.push({
+      id: 'drinking',
+      type: 'drinking',
+      message: drinkingMessages[Math.floor(Math.random() * drinkingMessages.length)],
+      timestamp: new Date().toISOString(),
+      severity: 'light'
+    })
+  }
+
+  // 5. Jsi první - motivace
+  if (userPosition === 0 && leaderboard.length > 1) {
+    const leadMessages = [
+      '👑 Král kokotů!',
+      '🏆 Jsi první, to tvoje kolena nemůžou vydržet!',
+      '💪 Solidní výkon! Teď to neposrat...',
+    ]
+    messages.push({
+      id: 'first-place',
+      type: 'comeback',
+      message: leadMessages[Math.floor(Math.random() * leadMessages.length)],
+      timestamp: new Date().toISOString(),
+      severity: 'light'
+    })
+  }
+
+  // 6. Máš pod 50% aktivních dní
+  if (consistency.activeDaysPercent < 50) {
+    messages.push({
+      id: 'lazy-ass',
+      type: 'lazy',
+      message: `Jen ${consistency.activeDaysPercent.toFixed(0)}% aktivních dní? Ty seš fakt línej kokot! 😴`,
+      timestamp: new Date().toISOString(),
+      severity: 'brutal'
+    })
+  }
+
+  return messages
+}
