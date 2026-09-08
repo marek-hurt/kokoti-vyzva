@@ -167,3 +167,68 @@ export async function getAllActivities(): Promise<(Activity & { user_name: strin
     user_name: (activity.users as any).name
   })) || []
 }
+
+export type PointsHistory = {
+  date: string
+  [key: string]: number | string // user_id: points
+}
+
+export async function getPointsHistory(): Promise<PointsHistory[]> {
+  // Získat všechny aktivity seřazené podle data
+  const { data: activities, error } = await supabase
+    .from('activities')
+    .select('*, users!inner(id, name, color)')
+    .order('date', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching points history:', error)
+    return []
+  }
+
+  if (!activities || activities.length === 0) {
+    return []
+  }
+
+  // Získat všechny unikátní uživatele
+  const allUserIds = new Set<string>()
+  activities.forEach(a => allUserIds.add(a.user_id))
+
+  // Kumulativní body pro každého uživatele
+  const userPoints: { [userId: string]: number } = {}
+  allUserIds.forEach(userId => {
+    userPoints[userId] = 0
+  })
+
+  // Seskupit aktivity podle data
+  const dateMap: { [date: string]: Activity[] } = {}
+  activities.forEach(activity => {
+    if (!dateMap[activity.date]) {
+      dateMap[activity.date] = []
+    }
+    dateMap[activity.date].push(activity)
+  })
+
+  // Seřadit data chronologicky
+  const dates = Object.keys(dateMap).sort()
+  const result: PointsHistory[] = []
+
+  // Pro každý den vypočítat kumulativní body
+  dates.forEach(date => {
+    const dayActivities = dateMap[date]
+
+    // Přičíst body za aktivity v tento den
+    dayActivities.forEach(activity => {
+      const points = Math.round(activity.km) + activity.kokotmetr + (activity.no_alcohol ? 1 : 0)
+      userPoints[activity.user_id] += points
+    })
+
+    // Vytvořit záznam pro tento den s aktuálními kumulativními body všech uživatelů
+    const entry: PointsHistory = { date }
+    allUserIds.forEach(userId => {
+      entry[userId] = userPoints[userId]
+    })
+    result.push(entry)
+  })
+
+  return result
+}

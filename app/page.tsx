@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   BarChart3,
+  Beer,
   CalendarDays,
   Check,
   ChevronRight,
@@ -21,7 +22,8 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, type LeaderboardEntry, type User, type Activity } from '@/lib/supabase'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, type LeaderboardEntry, type User, type Activity, type PointsHistory } from '@/lib/supabase'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts'
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState('home')
@@ -37,19 +39,23 @@ export default function Page() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState({ km: '', kokotmetr: '', no_alcohol: false })
   const [filterUserId, setFilterUserId] = useState<string>('all')
+  const [pointsHistory, setPointsHistory] = useState<PointsHistory[]>([])
+  const entryFormRef = useRef<HTMLElement>(null)
 
   // Načíst data z databáze
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      const [leaderboardData, usersData, activitiesData] = await Promise.all([
+      const [leaderboardData, usersData, activitiesData, historyData] = await Promise.all([
         getLeaderboard(),
         getUsers(),
-        getAllActivities()
+        getAllActivities(),
+        getPointsHistory()
       ])
       setLeaderboard(leaderboardData)
       setUsers(usersData)
       setActivities(activitiesData)
+      setPointsHistory(historyData)
       if (usersData.length > 0 && !selectedUserId) {
         setSelectedUserId(usersData[0].id)
       }
@@ -169,10 +175,19 @@ export default function Page() {
                 const maxPoints = leaderboard[0]?.total_points || 1
                 const progress = Math.round((runner.total_points / maxPoints) * 100)
                 const isCurrent = runner.id === selectedUserId
+                const isLast = rank === leaderboard.length
 
                 return (
-                  <article className={`runner-card ${isCurrent ? 'runner-current' : ''}`} key={runner.id}>
-                    <div className="rank">{rank === 1 ? <Trophy className="rank-trophy" /> : `0${rank}`}</div>
+                  <article
+                    className={`runner-card ${isCurrent ? 'runner-current' : ''}`}
+                    key={runner.id}
+                    onClick={() => {
+                      setSelectedUserId(runner.id)
+                      entryFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="rank">{rank === 1 ? <Trophy className="rank-trophy" /> : isLast ? <Beer className="rank-trophy" style={{ color: '#f59e0b' }} /> : `0${rank}`}</div>
                     <div className={`avatar ${runner.color}`}>{runner.initials}</div>
                     <div className="runner-main">
                       <div className="runner-top"><h3>{runner.name}</h3><strong>{runner.total_points} <small>bodů</small></strong></div>
@@ -190,7 +205,7 @@ export default function Page() {
             )}
           </section>
 
-          <section className="entry-card">
+          <section className="entry-card" ref={entryFormRef}>
             <div className="entry-heading">
               <div><p className="eyebrow">DENNÍ ZÁPIS</p><h2>Přidat <span>dnešek</span></h2></div>
               <div className="date-pill"><CalendarDays /> {new Date().toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric' })}</div>
@@ -198,7 +213,7 @@ export default function Page() {
 
             {/* Výběr uživatele */}
             <label style={{ marginBottom: '1rem', display: 'block' }}>
-              <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', color: '#888' }}>UŽIVATEL</span>
+              <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', color: '#888' }}>KOKOT</span>
               <select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
@@ -262,13 +277,13 @@ export default function Page() {
               {/* Filtr uživatelů */}
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', color: '#888' }}>FILTR HRÁČE</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', color: '#888' }}>FILTR KOKOTA</span>
                   <select
                     value={filterUserId}
                     onChange={(e) => setFilterUserId(e.target.value)}
                     style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #333', background: '#000', color: '#fff', fontSize: '1rem' }}
                   >
-                    <option value="all">Všichni hráči</option>
+                    <option value="all">Všichni kokoti</option>
                     {users.map(user => (
                       <option key={user.id} value={user.id}>{user.name}</option>
                     ))}
@@ -373,8 +388,148 @@ export default function Page() {
           )
         })()}
 
-        {activeTab === 'stats' && <section className="placeholder-tab"><div className="big-tab-icon"><BarChart3 /></div><p className="eyebrow">MOJE STATISTIKY</p><h2>Tvoje cesta <span>v číslech</span></h2><p>Historie aktivit a osobní rekordy budou brzy na jednom místě.</p></section>}
-        {activeTab === 'info' && <section className="placeholder-tab"><div className="big-tab-icon"><Flame /></div><p className="eyebrow">O VÝZVĚ</p><h2>Každý kilometr <span>se počítá</span></h2><p>Běhej, choď do kopců a sbírej dny bez alkoholu. Na konci týdne vyhrává nejlepší skóre.</p></section>}
+        {activeTab === 'stats' && (
+          <section style={{ padding: '1rem', marginBottom: '5rem' }}>
+            <div className="section-heading" style={{ marginBottom: '1rem' }}>
+              <div><p className="eyebrow">GRAF VÝVOJE</p><h2>Průběh <span>bodů</span></h2></div>
+            </div>
+
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Načítám data...</div>
+            ) : (
+              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '2rem' }}>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={pointsHistory} margin={{ top: 5, right: 80, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: '#999', fontSize: 11 }}
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' })}
+                    />
+                    <YAxis tick={{ fill: '#999', fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{ background: '#fff', border: '1px solid #ddd', borderRadius: '8px', fontSize: '12px' }}
+                      labelFormatter={(value) => new Date(value).toLocaleDateString('cs-CZ')}
+                    />
+                    {users.map(user => {
+                      // Mapování barev na hex kódy
+                      const colorMap: {[key: string]: string} = {
+                        'avatar-lime': '#84cc16',
+                        'avatar-coral': '#f87171',
+                        'avatar-blue': '#3b82f6',
+                        'avatar-violet': '#a78bfa',
+                        'avatar-orange': '#fb923c',
+                        'avatar-pink': '#f472b6',
+                        'avatar-cyan': '#06b6d4',
+                        'avatar-yellow': '#eab308',
+                        'avatar-green': '#22c55e',
+                        'avatar-red': '#ef4444',
+                        'avatar-purple': '#a855f7',
+                      }
+                      const color = colorMap[user.color] || '#10b981'
+
+                      return (
+                        <Line
+                          key={user.id}
+                          type="monotone"
+                          dataKey={user.id}
+                          stroke={color}
+                          strokeWidth={2}
+                          name={user.name}
+                          dot={false}
+                          connectNulls
+                          label={({ x, y, index }: any) => {
+                            if (index !== pointsHistory.length - 1) return null
+                            return (
+                              <text
+                                x={x}
+                                y={y}
+                                fill={color}
+                                fontSize={11}
+                                fontWeight={600}
+                                textAnchor="start"
+                                dx={8}
+                                dy={4}
+                              >
+                                {user.name}
+                              </text>
+                            )
+                          }}
+                        />
+                      )
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+        )}
+        {activeTab === 'info' && (
+          <section style={{ padding: '1.5rem', marginBottom: '5rem' }}>
+            <div className="section-heading">
+              <div><p className="eyebrow">O VÝZVĚ</p><h2>Pravidla <span>a info</span></h2></div>
+            </div>
+
+            <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📅 Termíny</h3>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#555', marginBottom: '0.5rem' }}>
+                <strong>Začátek:</strong> 4. října 2024 (neděle)<br/>
+                <strong>Konec:</strong> 12. listopadu 2024 (čtvrtek)<br/>
+                <strong>Večírek:</strong> 21. listopadu 2024 (sobota) ve Velemíně
+              </p>
+            </div>
+
+            <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🏆 Ceny a pokuty</h3>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#555' }}>
+                <strong>Poslední platí:</strong> Sud 50L dle vlastního výběru<br/>
+                <strong>Pod 200 bodů:</strong> 1000 Kč do kasy na kurvy a chlebíčky!
+              </p>
+            </div>
+
+            <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📊 Bodování</h3>
+              <ul style={{ fontSize: '0.875rem', lineHeight: 1.8, color: '#555', paddingLeft: '1.5rem' }}>
+                <li><strong>1 km běhu/plavání</strong> = 1 bod</li>
+                <li><strong>1 kokotmetr</strong> (100m převýšení, zaokrouhleno dolů) = 1 bod</li>
+                <li><strong>Den bez chlastu</strong> = 1 bod</li>
+                <li><strong>10 km na kole</strong> = 2 body (zaokrouhleno dolů)</li>
+                <li><strong>Uplavaný km</strong> = 1 bod + 1 bonusák</li>
+                <li><strong>Rejžův sluníčkový den:</strong> Bod za každé pivo, běhání ten den za 0</li>
+              </ul>
+            </div>
+
+            <div style={{ background: '#fffbeb', padding: '1.5rem', borderRadius: '16px', border: '2px solid #fbbf24', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#92400e' }}>⚠️ POZOR - Letos nově!</h3>
+              <ul style={{ fontSize: '0.875rem', lineHeight: 1.8, color: '#78350f', paddingLeft: '1.5rem' }}>
+                <li>Letos se počítají <strong>fotbálky!</strong></li>
+                <li><strong>Badminton v hale se nepočítá</strong></li>
+                <li><strong>Kolo:</strong> 2 body za každých celých 10km</li>
+                <li>Kdo nastoupí do výzvy, musí ji dokončit - <strong>žádné škrtání v průběhu!</strong></li>
+              </ul>
+            </div>
+
+            <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📸 Jak zapisovat</h3>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#555' }}>
+                Po sportovním výkonu do skupiny <strong>screenshot z jakékoliv aplikace</strong>.<br/>
+                Musí být poslán <strong>v den výkonu!</strong>
+              </p>
+            </div>
+
+            <div style={{ background: '#f0fdf4', padding: '1.5rem', borderRadius: '16px', border: '1px solid #86efac' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', color: '#166534' }}>📚 Uplynulé ročníky</h3>
+              <a
+                href="https://docs.google.com/spreadsheets/d/1NCxuQcFut1ymm5xpk4a0QHl4cHWin1oyNlt2vn97x_Y/edit?usp=sharing"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '0.875rem', color: '#10b981', textDecoration: 'underline' }}
+              >
+                Prohlédnout archiv výzev →
+              </a>
+            </div>
+          </section>
+        )}
 
         <nav className="bottom-nav" aria-label="Hlavní navigace">
           <button className={activeTab === 'home' ? 'active' : ''} onClick={() => setActiveTab('home')}><Home /><span>Domů</span></button>
