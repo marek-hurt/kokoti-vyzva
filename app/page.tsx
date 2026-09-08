@@ -86,6 +86,7 @@ export default function Page() {
     }
   }, [selectedUserId])
 
+
   // Funkce pro přidání aktivity
   async function handleSubmit() {
     if (!selectedUserId) return
@@ -545,7 +546,7 @@ export default function Page() {
                 <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #333' }}>
-                      <th rowSpan={2} style={{ padding: '0.5rem', textAlign: 'left', fontWeight: 600, verticalAlign: 'bottom' }}>Datum</th>
+                      <th rowSpan={2} style={{ padding: '0.5rem', textAlign: 'left', fontWeight: 600, verticalAlign: 'bottom', position: 'sticky', left: 0, background: '#f3f7f2', zIndex: 10 }}>Datum</th>
                       {users.map(user => (
                         <th key={user.id} colSpan={3} style={{ padding: '0.5rem', textAlign: 'center', fontWeight: 700, borderLeft: '1px solid #333' }}>{user.name}</th>
                       ))}
@@ -563,7 +564,7 @@ export default function Page() {
                   <tbody>
                     {dailyDates.map(date => (
                       <tr key={date} style={{ borderBottom: '1px solid #222' }}>
-                        <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{new Date(date).toLocaleDateString('cs-CZ')}</td>
+                        <td style={{ padding: '0.5rem', whiteSpace: 'nowrap', position: 'sticky', left: 0, background: '#f3f7f2', zIndex: 5 }}>{new Date(date).toLocaleDateString('cs-CZ')}</td>
                         {users.map(user => {
                           const activity = activities.find(a => a.date === date && a.user_id === user.id)
                           const noAlcohol = activity ? activity.no_alcohol : false
@@ -599,7 +600,7 @@ export default function Page() {
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Načítám data...</div>
             ) : (
-              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '2rem' }}>
+              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '2rem', width: '100%', minHeight: '400px' }}>
                 <ResponsiveContainer width="100%" height={400}>
                   <LineChart data={pointsHistory} margin={{ top: 5, right: 80, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
@@ -675,9 +676,9 @@ export default function Page() {
             <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1rem' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📅 Termíny</h3>
               <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#555', marginBottom: '0.5rem' }}>
-                <strong>Začátek:</strong> 4. října 2024 (neděle)<br/>
-                <strong>Konec:</strong> 12. listopadu 2024 (čtvrtek)<br/>
-                <strong>Večírek:</strong> 21. listopadu 2024 (sobota) ve Velemíně
+                <strong>Začátek:</strong> 4. října 2026 (neděle)<br/>
+                <strong>Konec:</strong> 12. listopadu 2026 (čtvrtek)<br/>
+                <strong>Večírek:</strong> 21. listopadu 2026 (sobota) ve Velemíně
               </p>
             </div>
 
@@ -692,7 +693,7 @@ export default function Page() {
             <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1rem' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>📊 Bodování</h3>
               <ul style={{ fontSize: '0.875rem', lineHeight: 1.8, color: '#555', paddingLeft: '1.5rem' }}>
-                <li><strong>1 km běhu/plavání</strong> = 1 bod</li>
+                <li><strong>1 km běhu</strong> = 1 bod</li>
                 <li><strong>1 kokotmetr</strong> (100m převýšení, zaokrouhleno dolů) = 1 bod</li>
                 <li><strong>Den bez chlastu</strong> = 1 bod</li>
                 <li><strong>10 km na kole</strong> = 2 body (zaokrouhleno dolů)</li>
