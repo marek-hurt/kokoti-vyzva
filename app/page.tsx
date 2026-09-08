@@ -13,6 +13,7 @@ import {
   Home,
   Mountain,
   Plus,
+  Settings,
   ShieldCheck,
   Table,
   Trash2,
@@ -42,7 +43,29 @@ export default function Page() {
   const [editValues, setEditValues] = useState({ beh: '', kolo: '', bazen: '', kokotmetr: '', no_alcohol: false })
   const [filterUserId, setFilterUserId] = useState<string>('all')
   const [pointsHistory, setPointsHistory] = useState<PointsHistory[]>([])
+  const [settingsPassword, setSettingsPassword] = useState('')
+  const [isSettingsUnlocked, setIsSettingsUnlocked] = useState(false)
+  const [challengeStart, setChallengeStart] = useState('2026-10-04')
+  const [challengeEnd, setChallengeEnd] = useState('2026-11-12')
   const entryFormRef = useRef<HTMLElement>(null)
+
+  // Načíst nastavení výzvy z localStorage
+  useEffect(() => {
+    const savedStart = localStorage.getItem('challengeStart')
+    const savedEnd = localStorage.getItem('challengeEnd')
+    if (savedStart) setChallengeStart(savedStart)
+    if (savedEnd) setChallengeEnd(savedEnd)
+  }, [])
+
+  // Výpočet průběhu výzvy
+  const startDate = new Date(challengeStart)
+  const endDate = new Date(challengeEnd)
+  const today = new Date()
+  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+  const daysElapsed = Math.max(0, Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)))
+  const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+  const percentComplete = Math.min(100, Math.round((daysElapsed / totalDays) * 100))
+  const currentWeek = Math.min(6, Math.ceil(daysElapsed / 7))
 
   // Načíst data z databáze
   useEffect(() => {
@@ -192,11 +215,28 @@ export default function Page() {
         {activeTab === 'home' && <>
           <section className="week-card">
             <div>
-              <div className="week-label"><span className="live-dot" /> 3. TÝDEN VÝZVY</div>
-              <p className="week-title">Ještě 4 dny do cíle</p>
+              <div className="week-label"><span className="live-dot" /> {currentWeek}. TÝDEN VÝZVY</div>
+              <p className="week-title">Ještě {daysRemaining} {daysRemaining === 1 ? 'den' : daysRemaining < 5 ? 'dny' : 'dní'} do cíle</p>
               <p className="week-subtitle">Společně jsme uběhli <strong>{leaderboard.reduce((sum, r) => sum + r.total_beh, 0).toFixed(1)} km</strong></p>
             </div>
-            <div className="week-ring"><strong>68%</strong><span>hotovo</span></div>
+            <div style={{ position: 'relative', width: '66px', height: '66px' }}>
+              <svg style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }} width="66" height="66">
+                <circle cx="33" cy="33" r="28" fill="none" stroke="#3c7453" strokeWidth="5" />
+                <circle
+                  cx="33"
+                  cy="33"
+                  r="28"
+                  fill="none"
+                  stroke="#71d394"
+                  strokeWidth="5"
+                  strokeDasharray={`${percentComplete * 1.76} 176`}
+                />
+              </svg>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '66px', height: '66px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <strong style={{ font: '700 16px var(--font-display)', color: '#fff' }}>{percentComplete}%</strong>
+                <span style={{ color: '#acd0b9', fontSize: '9px' }}>hotovo</span>
+              </div>
+            </div>
           </section>
 
           <section className="section-heading">
@@ -734,12 +774,88 @@ export default function Page() {
           </section>
         )}
 
+        {activeTab === 'settings' && (
+          <section style={{ padding: '1.5rem', marginBottom: '5rem' }}>
+            <div className="section-heading">
+              <div><p className="eyebrow">NASTAVENÍ</p><h2>Nastavení <span>výzvy</span></h2></div>
+            </div>
+
+            {!isSettingsUnlocked ? (
+              <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', border: '1px solid #e3ece4', textAlign: 'center' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🔒 Zadejte heslo</h3>
+                <input
+                  type="password"
+                  value={settingsPassword}
+                  onChange={(e) => setSettingsPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && settingsPassword === 'kokot') {
+                      setIsSettingsUnlocked(true)
+                    }
+                  }}
+                  placeholder="Heslo..."
+                  style={{ width: '100%', maxWidth: '300px', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d8e7da', fontSize: '1rem', textAlign: 'center' }}
+                />
+                <button
+                  onClick={() => {
+                    if (settingsPassword === 'kokot') {
+                      setIsSettingsUnlocked(true)
+                    } else {
+                      alert('Špatné heslo!')
+                    }
+                  }}
+                  style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Odemknout
+                </button>
+              </div>
+            ) : (
+              <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', border: '1px solid #e3ece4' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>⚙️ Nastavení termínů výzvy</h3>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#555' }}>
+                    Začátek výzvy
+                  </label>
+                  <input
+                    type="date"
+                    value={challengeStart}
+                    onChange={(e) => {
+                      setChallengeStart(e.target.value)
+                      localStorage.setItem('challengeStart', e.target.value)
+                    }}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d8e7da', fontSize: '1rem' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#555' }}>
+                    Konec výzvy
+                  </label>
+                  <input
+                    type="date"
+                    value={challengeEnd}
+                    onChange={(e) => {
+                      setChallengeEnd(e.target.value)
+                      localStorage.setItem('challengeEnd', e.target.value)
+                    }}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d8e7da', fontSize: '1rem' }}
+                  />
+                </div>
+                <div style={{ padding: '1rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                  <p style={{ fontSize: '0.875rem', color: '#1e40af', margin: 0 }}>
+                    <strong>Aktuální průběh:</strong> {daysElapsed} dní ({percentComplete}% hotovo), zbývá {daysRemaining} {daysRemaining === 1 ? 'den' : daysRemaining < 5 ? 'dny' : 'dní'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         <nav className="bottom-nav" aria-label="Hlavní navigace">
           <button className={activeTab === 'home' ? 'active' : ''} onClick={() => setActiveTab('home')}><Home /><span>Domů</span></button>
           <button className={activeTab === 'table' ? 'active' : ''} onClick={() => setActiveTab('table')}><Table /><span>Tabulka</span></button>
           <button className={activeTab === 'daily' ? 'active' : ''} onClick={() => setActiveTab('daily')}><CalendarDays /><span>Po dnech</span></button>
           <button className={activeTab === 'stats' ? 'active' : ''} onClick={() => setActiveTab('stats')}><BarChart3 /><span>Statistiky</span></button>
           <button className={activeTab === 'info' ? 'active' : ''} onClick={() => setActiveTab('info')}><CircleHelp /><span>Info</span></button>
+          <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}><Settings /><span>Nastavení</span></button>
         </nav>
       </div>
     </main>
