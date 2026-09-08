@@ -44,7 +44,65 @@ export type LeaderboardEntry = {
 }
 
 // API funkce
-export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
+export async function getLeaderboard(startDate?: string, endDate?: string): Promise<LeaderboardEntry[]> {
+  // Pokud jsou zadané datumy, vypočítáme leaderboard z aktivit v daném rozmezí
+  if (startDate && endDate) {
+    const { data: activities, error } = await supabase
+      .from('activities')
+      .select('*')
+      .gte('date', startDate)
+      .lte('date', endDate)
+
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+
+    if (error || usersError || !activities || !users) {
+      console.error('Error fetching data:', error, usersError)
+      return []
+    }
+
+    // Vypočítat leaderboard z filtrovaných aktivit
+    const leaderboardMap = new Map<string, LeaderboardEntry>()
+
+    users.forEach(user => {
+      leaderboardMap.set(user.id, {
+        id: user.id,
+        name: user.name,
+        initials: user.initials,
+        avatar_url: user.avatar_url,
+        color: user.color,
+        total_beh: 0,
+        total_kolo: 0,
+        total_bazen: 0,
+        total_kokotmetr: 0,
+        sober_days: 0,
+        total_points: 0
+      })
+    })
+
+    activities.forEach(activity => {
+      const entry = leaderboardMap.get(activity.user_id)
+      if (entry) {
+        entry.total_beh += activity.beh
+        entry.total_kolo += activity.kolo
+        entry.total_bazen += activity.bazen
+        entry.total_kokotmetr += activity.kokotmetr
+        if (activity.no_alcohol) entry.sober_days += 1
+
+        // Výpočet bodů
+        entry.total_points += activity.beh +
+                             Math.floor(activity.kolo / 10) * 2 +
+                             Math.floor(activity.bazen) * 2 +
+                             activity.kokotmetr +
+                             (activity.no_alcohol ? 1 : 0)
+      }
+    })
+
+    return Array.from(leaderboardMap.values()).sort((a, b) => b.total_points - a.total_points)
+  }
+
+  // Jinak použít view (pro kompatibilitu)
   const { data, error } = await supabase
     .from('leaderboard')
     .select('*')
@@ -181,12 +239,21 @@ export type PointsHistory = {
   [key: string]: number | string // user_id: points
 }
 
-export async function getPointsHistory(): Promise<PointsHistory[]> {
-  // Získat všechny aktivity seřazené podle data
-  const { data: activities, error } = await supabase
+export async function getPointsHistory(startDate?: string, endDate?: string): Promise<PointsHistory[]> {
+  // Získat všechny aktivity seřazené podle data (filtrované podle rozmezí pokud je zadané)
+  let query = supabase
     .from('activities')
     .select('*, users!inner(id, name, color)')
     .order('date', { ascending: true })
+
+  if (startDate) {
+    query = query.gte('date', startDate)
+  }
+  if (endDate) {
+    query = query.lte('date', endDate)
+  }
+
+  const { data: activities, error } = await query
 
   if (error) {
     console.error('Error fetching points history:', error)
@@ -226,7 +293,7 @@ export async function getPointsHistory(): Promise<PointsHistory[]> {
 
     // Přičíst body za aktivity v tento den
     dayActivities.forEach(activity => {
-      const points = Math.floor(activity.beh) + Math.floor(activity.kolo / 10) * 2 + Math.floor(activity.bazen) * 2 + activity.kokotmetr + (activity.no_alcohol ? 1 : 0)
+      const points = activity.beh + Math.floor(activity.kolo / 10) * 2 + Math.floor(activity.bazen) * 2 + activity.kokotmetr + (activity.no_alcohol ? 1 : 0)
       userPoints[activity.user_id] += points
     })
 

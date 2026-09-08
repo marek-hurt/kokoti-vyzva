@@ -45,8 +45,8 @@ export default function Page() {
   const [pointsHistory, setPointsHistory] = useState<PointsHistory[]>([])
   const [settingsPassword, setSettingsPassword] = useState('')
   const [isSettingsUnlocked, setIsSettingsUnlocked] = useState(false)
-  const [challengeStart, setChallengeStart] = useState('2026-10-04')
-  const [challengeEnd, setChallengeEnd] = useState('2026-11-12')
+  const [challengeStart, setChallengeStart] = useState('2026-08-01')
+  const [challengeEnd, setChallengeEnd] = useState('2026-09-30')
   const [globalPassword, setGlobalPassword] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [showLoginScreen, setShowLoginScreen] = useState(true)
@@ -81,6 +81,31 @@ export default function Page() {
     }
   }
 
+  // Funkce pro přepnutí uživatele s potvrzením
+  function handleUserSwitch(newUserId: string) {
+    if (!selectedUserId || selectedUserId === newUserId) {
+      setSelectedUserId(newUserId)
+      entryFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
+
+    const currentUser = users.find(u => u.id === selectedUserId)
+    const newUser = users.find(u => u.id === newUserId)
+
+    if (currentUser && newUser) {
+      const confirmed = confirm(
+        `Hele ty kokote, před tím si tu byl jako "${currentUser.name}" a teď se přepínáš na "${newUser.name}". Pokračovat?`
+      )
+      if (confirmed) {
+        setSelectedUserId(newUserId)
+        entryFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    } else {
+      setSelectedUserId(newUserId)
+      entryFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
   // Výpočet průběhu výzvy
   const startDate = new Date(challengeStart)
   const endDate = new Date(challengeEnd)
@@ -96,10 +121,10 @@ export default function Page() {
     async function fetchData() {
       setLoading(true)
       const [leaderboardData, usersData, activitiesData, historyData] = await Promise.all([
-        getLeaderboard(),
+        getLeaderboard(challengeStart, challengeEnd),
         getUsers(),
         getAllActivities(),
-        getPointsHistory()
+        getPointsHistory(challengeStart, challengeEnd)
       ])
       setLeaderboard(leaderboardData)
       setUsers(usersData)
@@ -124,7 +149,7 @@ export default function Page() {
       setLoading(false)
     }
     fetchData()
-  }, [])
+  }, [challengeStart, challengeEnd])
 
   // Uložit vybraného uživatele do localStorage a URL při změně
   useEffect(() => {
@@ -163,9 +188,9 @@ export default function Page() {
 
       // Obnovit data
       const [newLeaderboard, newActivities, newHistory] = await Promise.all([
-        getLeaderboard(),
+        getLeaderboard(challengeStart, challengeEnd),
         getAllActivities(),
-        getPointsHistory()
+        getPointsHistory(challengeStart, challengeEnd)
       ])
       setLeaderboard(newLeaderboard)
       setActivities(newActivities)
@@ -181,7 +206,7 @@ export default function Page() {
     const success = await deleteActivity(id)
     if (success) {
       const [newLeaderboard, newActivities] = await Promise.all([
-        getLeaderboard(),
+        getLeaderboard(challengeStart, challengeEnd),
         getAllActivities()
       ])
       setLeaderboard(newLeaderboard)
@@ -216,9 +241,9 @@ export default function Page() {
     if (result) {
       setEditingId(null)
       const [newLeaderboard, newActivities, newHistory] = await Promise.all([
-        getLeaderboard(),
+        getLeaderboard(challengeStart, challengeEnd),
         getAllActivities(),
-        getPointsHistory()
+        getPointsHistory(challengeStart, challengeEnd)
       ])
       setLeaderboard(newLeaderboard)
       setActivities(newActivities)
@@ -356,16 +381,13 @@ export default function Page() {
                   <article
                     className={`runner-card ${isCurrent ? 'runner-current' : ''}`}
                     key={runner.id}
-                    onClick={() => {
-                      setSelectedUserId(runner.id)
-                      entryFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    }}
+                    onClick={() => handleUserSwitch(runner.id)}
                     style={{ cursor: 'pointer' }}
                   >
                     <div className="rank">{rank === 1 ? <Trophy className="rank-trophy" /> : isLast ? <Beer className="rank-trophy" style={{ color: '#f59e0b' }} /> : `0${rank}`}</div>
                     <div className={`avatar ${runner.color}`}>{runner.initials}</div>
                     <div className="runner-main">
-                      <div className="runner-top"><h3>{runner.name}</h3><strong>{runner.total_points} <small>bodů</small></strong></div>
+                      <div className="runner-top"><h3>{runner.name}</h3><strong>{runner.total_points.toFixed(1)} <small>bodů</small></strong></div>
                       <div className="runner-stats">
                         <span><Zap /> {runner.total_beh.toFixed(1)} km</span>
                         <span><Mountain /> {runner.total_kokotmetr.toLocaleString()} kokotm</span>
@@ -391,7 +413,7 @@ export default function Page() {
               <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', color: '#888' }}>KOKOT</span>
               <select
                 value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
+                onChange={(e) => handleUserSwitch(e.target.value)}
                 style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #333', background: '#000', color: '#fff', fontSize: '1rem' }}
               >
                 {users.map(user => (
@@ -483,9 +505,10 @@ export default function Page() {
         </>}
 
         {activeTab === 'table' && (() => {
-          const filteredActivities = filterUserId === 'all'
+          const filteredActivities = (filterUserId === 'all'
             ? activities
             : activities.filter(a => a.user_id === filterUserId)
+          ).filter(a => a.date >= challengeStart && a.date <= challengeEnd)
 
           return (
             <section style={{ padding: '1rem', marginBottom: '5rem' }}>
@@ -537,7 +560,7 @@ export default function Page() {
                     <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>dní bez 🍺</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + Math.floor(a.beh) + Math.floor(a.kolo / 10) * 2 + Math.floor(a.bazen) * 2 + a.kokotmetr + (a.no_alcohol ? 1 : 0), 0)}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + a.beh + Math.floor(a.kolo / 10) * 2 + Math.floor(a.bazen) * 2 + a.kokotmetr + (a.no_alcohol ? 1 : 0), 0).toFixed(1)}</div>
                     <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>body</div>
                   </div>
                 </div>
@@ -661,14 +684,13 @@ export default function Page() {
         })()}
 
         {activeTab === 'daily' && (() => {
-          const sortedActivityDates = activities.map(a => a.date).sort()
+          // Použít rozmezí z nastavení výzvy
           const dailyDates: string[] = []
-          if (sortedActivityDates.length > 0) {
-            const minDate = new Date(`${sortedActivityDates[0]}T00:00:00Z`)
-            const maxDate = new Date(`${sortedActivityDates[sortedActivityDates.length - 1]}T00:00:00Z`)
-            for (let d = minDate; d <= maxDate; d.setUTCDate(d.getUTCDate() + 1)) {
-              dailyDates.push(d.toISOString().split('T')[0])
-            }
+          const minDate = new Date(`${challengeStart}T00:00:00Z`)
+          const maxDate = new Date(`${challengeEnd}T00:00:00Z`)
+
+          for (let d = new Date(minDate); d <= maxDate; d.setUTCDate(d.getUTCDate() + 1)) {
+            dailyDates.push(d.toISOString().split('T')[0])
           }
 
           return (
@@ -705,7 +727,7 @@ export default function Page() {
                           const noAlcohol = activity ? activity.no_alcohol : false
                           const bg = noAlcohol ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)'
                           const points = activity
-                            ? Math.floor(activity.beh) + Math.floor(activity.kolo / 10) * 2 + Math.floor(activity.bazen) * 2 + (activity.no_alcohol ? 1 : 0)
+                            ? activity.beh + Math.floor(activity.kolo / 10) * 2 + Math.floor(activity.bazen) * 2 + (activity.no_alcohol ? 1 : 0)
                             : 0
                           const kokotmetr = activity ? activity.kokotmetr : 0
 
