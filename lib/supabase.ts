@@ -20,7 +20,9 @@ export type Activity = {
   id: string
   user_id: string
   date: string
-  km: number
+  beh: number
+  kolo: number
+  bazen: number
   kokotmetr: number
   no_alcohol: boolean
   created_at: string
@@ -33,7 +35,9 @@ export type LeaderboardEntry = {
   initials: string
   avatar_url?: string
   color: string
-  total_km: number
+  total_beh: number
+  total_kolo: number
+  total_bazen: number
   total_kokotmetr: number
   sober_days: number
   total_points: number
@@ -71,7 +75,9 @@ export async function getUsers(): Promise<User[]> {
 export async function addActivity(activity: {
   user_id: string
   date: string
-  km: number
+  beh: number
+  kolo: number
+  bazen: number
   kokotmetr: number
   no_alcohol: boolean
 }): Promise<Activity | null> {
@@ -95,7 +101,9 @@ export async function addActivity(activity: {
 export async function updateActivity(
   id: string,
   updates: {
-    km?: number
+    beh?: number
+    kolo?: number
+    bazen?: number
     kokotmetr?: number
     no_alcohol?: boolean
   }
@@ -218,7 +226,7 @@ export async function getPointsHistory(): Promise<PointsHistory[]> {
 
     // Přičíst body za aktivity v tento den
     dayActivities.forEach(activity => {
-      const points = Math.round(activity.km) + activity.kokotmetr + (activity.no_alcohol ? 1 : 0)
+      const points = Math.floor(activity.beh) + Math.floor(activity.kolo / 10) * 2 + Math.floor(activity.bazen) * 2 + activity.kokotmetr + (activity.no_alcohol ? 1 : 0)
       userPoints[activity.user_id] += points
     })
 

@@ -33,11 +33,13 @@ export default function Page() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedUserId, setSelectedUserId] = useState<string>('')
-  const [km, setKm] = useState('5')
-  const [kokotmetr, setKokotmetr] = useState('5')
+  const [beh, setBeh] = useState('0')
+  const [kolo, setKolo] = useState('0')
+  const [bazen, setBasen] = useState('0')
+  const [kokotmetr, setKokotmetr] = useState('0')
   const [activities, setActivities] = useState<(Activity & { user_name: string })[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editValues, setEditValues] = useState({ km: '', kokotmetr: '', no_alcohol: false })
+  const [editValues, setEditValues] = useState({ beh: '', kolo: '', bazen: '', kokotmetr: '', no_alcohol: false })
   const [filterUserId, setFilterUserId] = useState<string>('all')
   const [pointsHistory, setPointsHistory] = useState<PointsHistory[]>([])
   const entryFormRef = useRef<HTMLElement>(null)
@@ -72,7 +74,9 @@ export default function Page() {
     const result = await addActivity({
       user_id: selectedUserId,
       date: today,
-      km: parseFloat(km),
+      beh: parseFloat(beh),
+      kolo: parseFloat(kolo),
+      bazen: parseFloat(bazen),
       kokotmetr: parseInt(kokotmetr),
       no_alcohol: alcoholFree
     })
@@ -82,12 +86,14 @@ export default function Page() {
       setTimeout(() => setSubmitted(false), 1800)
 
       // Obnovit data
-      const [newLeaderboard, newActivities] = await Promise.all([
+      const [newLeaderboard, newActivities, newHistory] = await Promise.all([
         getLeaderboard(),
-        getAllActivities()
+        getAllActivities(),
+        getPointsHistory()
       ])
       setLeaderboard(newLeaderboard)
       setActivities(newActivities)
+      setPointsHistory(newHistory)
     }
   }
 
@@ -110,7 +116,9 @@ export default function Page() {
   function startEdit(activity: Activity & { user_name: string }) {
     setEditingId(activity.id)
     setEditValues({
-      km: activity.km.toString(),
+      beh: activity.beh.toString(),
+      kolo: activity.kolo.toString(),
+      bazen: activity.bazen.toString(),
       kokotmetr: activity.kokotmetr.toString(),
       no_alcohol: activity.no_alcohol
     })
@@ -119,19 +127,23 @@ export default function Page() {
   // Funkce pro uložení úpravy
   async function saveEdit(id: string) {
     const result = await updateActivity(id, {
-      km: parseFloat(editValues.km),
+      beh: parseFloat(editValues.beh),
+      kolo: parseFloat(editValues.kolo),
+      bazen: parseFloat(editValues.bazen),
       kokotmetr: parseInt(editValues.kokotmetr),
       no_alcohol: editValues.no_alcohol
     })
 
     if (result) {
       setEditingId(null)
-      const [newLeaderboard, newActivities] = await Promise.all([
+      const [newLeaderboard, newActivities, newHistory] = await Promise.all([
         getLeaderboard(),
-        getAllActivities()
+        getAllActivities(),
+        getPointsHistory()
       ])
       setLeaderboard(newLeaderboard)
       setActivities(newActivities)
+      setPointsHistory(newHistory)
     }
   }
 
@@ -154,7 +166,7 @@ export default function Page() {
             <div>
               <div className="week-label"><span className="live-dot" /> 3. TÝDEN VÝZVY</div>
               <p className="week-title">Ještě 4 dny do cíle</p>
-              <p className="week-subtitle">Společně jsme uběhli <strong>{leaderboard.reduce((sum, r) => sum + r.total_km, 0).toFixed(1)} km</strong></p>
+              <p className="week-subtitle">Společně jsme uběhli <strong>{leaderboard.reduce((sum, r) => sum + r.total_beh, 0).toFixed(1)} km</strong></p>
             </div>
             <div className="week-ring"><strong>68%</strong><span>hotovo</span></div>
           </section>
@@ -192,7 +204,7 @@ export default function Page() {
                     <div className="runner-main">
                       <div className="runner-top"><h3>{runner.name}</h3><strong>{runner.total_points} <small>bodů</small></strong></div>
                       <div className="runner-stats">
-                        <span><Zap /> {runner.total_km} km</span>
+                        <span><Zap /> {runner.total_beh.toFixed(1)} km</span>
                         <span><Mountain /> {runner.total_kokotmetr.toLocaleString()} kokotm</span>
                         <span><WineOff /> {runner.sober_days} dní</span>
                       </div>
@@ -227,13 +239,41 @@ export default function Page() {
 
             <div className="field-row">
               <label>
-                <span>VZDÁLENOST</span>
+                <span>BĚH</span>
                 <div className="input-wrap">
                   <input
                     type="number"
-                    value={km}
-                    onChange={(e) => setKm(e.target.value)}
-                    aria-label="Vzdálenost v kilometrech"
+                    value={beh}
+                    onChange={(e) => setBeh(e.target.value)}
+                    aria-label="Běh v kilometrech"
+                    step="0.1"
+                  />
+                  <b>km</b>
+                </div>
+              </label>
+              <label>
+                <span>KOLO</span>
+                <div className="input-wrap">
+                  <input
+                    type="number"
+                    value={kolo}
+                    onChange={(e) => setKolo(e.target.value)}
+                    aria-label="Kolo v kilometrech"
+                    step="0.1"
+                  />
+                  <b>km</b>
+                </div>
+              </label>
+            </div>
+            <div className="field-row">
+              <label>
+                <span>BAZÉN</span>
+                <div className="input-wrap">
+                  <input
+                    type="number"
+                    value={bazen}
+                    onChange={(e) => setBasen(e.target.value)}
+                    aria-label="Bazén v kilometrech"
                     step="0.1"
                   />
                   <b>km</b>
@@ -296,18 +336,30 @@ export default function Page() {
                 <p style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', opacity: 0.9 }}>
                   {filterUserId === 'all' ? 'CELKOVÉ VÝSLEDKY' : `VÝSLEDKY - ${users.find(u => u.id === filterUserId)?.name}`}
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', textAlign: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', gap: '1rem', textAlign: 'center' }}>
                   <div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.km.toString()), 0).toFixed(1)}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>km celkem</div>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.beh.toString()), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>běh km</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.kolo.toString()), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>kolo km</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.bazen.toString()), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>bazén km</div>
                   </div>
                   <div>
                     <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + a.kokotmetr, 0).toLocaleString()}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>kokotm celkem</div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>kokotm</div>
                   </div>
                   <div>
                     <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.filter(a => a.no_alcohol).length}</div>
                     <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>dní bez alkoholu</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + Math.floor(a.beh) + Math.floor(a.kolo / 10) * 2 + Math.floor(a.bazen) * 2 + a.kokotmetr + (a.no_alcohol ? 1 : 0), 0)}</div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>celkem bodů</div>
                   </div>
                 </div>
               </div>
@@ -318,7 +370,9 @@ export default function Page() {
                   <tr style={{ borderBottom: '2px solid #333' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600 }}>Datum</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600 }}>Uživatel</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>km</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>běh</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>kolo</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>bazén</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>kokotm</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600 }}>🚫🍺</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Akce</th>
@@ -333,11 +387,31 @@ export default function Page() {
                         {editingId === activity.id ? (
                           <input
                             type="number"
-                            value={editValues.km}
-                            onChange={(e) => setEditValues({...editValues, km: e.target.value})}
+                            value={editValues.beh}
+                            onChange={(e) => setEditValues({...editValues, beh: e.target.value})}
                             style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
                           />
-                        ) : activity.km}
+                        ) : activity.beh}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        {editingId === activity.id ? (
+                          <input
+                            type="number"
+                            value={editValues.kolo}
+                            onChange={(e) => setEditValues({...editValues, kolo: e.target.value})}
+                            style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
+                          />
+                        ) : activity.kolo}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        {editingId === activity.id ? (
+                          <input
+                            type="number"
+                            value={editValues.bazen}
+                            onChange={(e) => setEditValues({...editValues, bazen: e.target.value})}
+                            style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
+                          />
+                        ) : activity.bazen}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {editingId === activity.id ? (
