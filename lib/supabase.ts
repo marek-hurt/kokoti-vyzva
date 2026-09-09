@@ -1211,18 +1211,30 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
     const pointsDiff = userAhead.total_points - leaderboard[userPosition].total_points
 
     if (pointsDiff < 20) {
+      const closeMessages = [
+        `${userAhead.name} tě právě předběhl o ${pointsDiff.toFixed(1)} bodů, ty pičo! 😱`,
+        `${userAhead.name} tě přeskočil o ${pointsDiff.toFixed(1)} bodů! Měl by ses stydět 🤡`,
+        `Jen ${pointsDiff.toFixed(1)} bodů ztrácíš na ${userAhead.name}... a stejně to nedoběhneš 🐌`,
+        `${userAhead.name} tě má o ${pointsDiff.toFixed(1)} bodů! Začni se snažit, ne? 💩`
+      ]
       messages.push({
         id: 'overtaken-close',
         type: 'overtaken',
-        message: `${userAhead.name} tě právě předběhl o ${pointsDiff.toFixed(1)} bodů, ty pičo! 😱`,
+        message: closeMessages[Math.floor(Math.random() * closeMessages.length)],
         timestamp: new Date().toISOString(),
         severity: 'brutal'
       })
     } else {
+      const farMessages = [
+        `${userAhead.name} je před tebou o ${pointsDiff.toFixed(1)} bodů. Proč tu vůbec seš? 🤦`,
+        `${userAhead.name} tě vede o ${pointsDiff.toFixed(1)} bodů. Tvoje účast je akorát pro statistiku 📊`,
+        `${pointsDiff.toFixed(1)} bodů za ${userAhead.name}... To nedoháníš ani kdybys měl raketu v prdeli 🚀`,
+        `${userAhead.name} je o ${pointsDiff.toFixed(1)} bodů lepší. Prostě smířit se s průměrem 🤷`
+      ]
       messages.push({
         id: 'overtaken-far',
         type: 'overtaken',
-        message: `${userAhead.name} je před tebou o ${pointsDiff.toFixed(1)} bodů. Proč tu vůbec seš? 🤦`,
+        message: farMessages[Math.floor(Math.random() * farMessages.length)],
         timestamp: new Date().toISOString(),
         severity: 'medium'
       })
@@ -1235,7 +1247,15 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       'Nebolí tě prdel z toho sudu? 🍺',
       'Gratuluju, jsi poslední! 💩',
       'Aspoň že máš jistý sud... 😂',
-      'Poslední kokot platí! 🤡'
+      'Poslední kokot platí! 🤡',
+      'Letos na to dobře sereš! 💩',
+      'Tvoje máma včera večer podávala lepší výkony 😏',
+      'To běháš letos s análním kolíkem v prdeli? 🍑',
+      'Tak si příště loupni ibalgin, ať něco uběhneš, ne? 💊',
+      'Trénuješ na paraolympiádu? ♿',
+      'Tvůj výkon je jako tvoje kariéra - neexistující 🤷',
+      'Už jsi zvažoval jiný koníček? Třeba pletení? 🧶',
+      'S tímhle výkonem snad nedoběhneš ani k lednici 🍕'
     ]
     messages.push({
       id: 'last-place',
@@ -1270,6 +1290,10 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       `Takže pivo ano, běhání ne? Dobrá strategie pro mrdku jako ${userName}! 🤦`,
       `${userName} má jasně nastavený priority: 🍺 > 🏃`,
       `Vidím že ${userName} chlastá, místo aby zvedl prdel od kompu`,
+      `Chlast je tvoje jediná disciplína, kde máš konzistentní výkon 🍻`,
+      `S takhle oteklým obličejem bych taky radši nešel běhat 🥴`,
+      `Už si vybral pivo, co budeš kupovat na zapíjení?`,
+      `Pivní kilometr se do výzvy nepočítá, kokote 🏃‍♂️💨`
     ]
     messages.push({
       id: 'drinking',
@@ -1286,6 +1310,10 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       '👑 Král kokotů!',
       '🏆 Jsi první, to tvoje kolena nemůžou vydržet!',
       '💪 Solidní výkon! Teď to neposrat...',
+      '🥇 Gratuluju! Konečně ses k něčemu dopracoval v životě',
+      '👏 Tak to seš dobrej vymrdanec',
+      '🔥 První místo! Hlavně to neposer',
+      '⚡ Jsi nahoře! Aspoň jednou v životě...'
     ]
     messages.push({
       id: 'first-place',
@@ -1298,10 +1326,17 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
 
   // 6. Máš pod 50% aktivních dní
   if (consistency.activeDaysPercent < 50) {
+    const lazyMessages = [
+      `Jen ${consistency.activeDaysPercent.toFixed(0)}% aktivních dní? Ty seš fakt línej kokot! 😴`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní... Tvůj gauč má větší opotřebení než boty 🛋️`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? To je víc času na Pornhub než na běhání 🔞`,
+      `${consistency.activeDaysPercent.toFixed(0)}% konzistence? Konzistentnější jsi akorát v lenošení 💤`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Víc se hýbeš jen když jdeš na pivo 🍺`
+    ]
     messages.push({
       id: 'lazy-ass',
       type: 'lazy',
-      message: `Jen ${consistency.activeDaysPercent.toFixed(0)}% aktivních dní? Ty seš fakt línej kokot! 😴`,
+      message: lazyMessages[Math.floor(Math.random() * lazyMessages.length)],
       timestamp: new Date().toISOString(),
       severity: 'brutal'
     })
