@@ -1215,7 +1215,11 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
         `${userAhead.name} tě právě předběhl o ${pointsDiff.toFixed(1)} bodů, ty pičo! 😱`,
         `${userAhead.name} tě přeskočil o ${pointsDiff.toFixed(1)} bodů! Měl by ses stydět 🤡`,
         `Jen ${pointsDiff.toFixed(1)} bodů ztrácíš na ${userAhead.name}... a stejně to nedoběhneš 🐌`,
-        `${userAhead.name} tě má o ${pointsDiff.toFixed(1)} bodů! Začni se snažit, ne? 💩`
+        `${userAhead.name} tě má o ${pointsDiff.toFixed(1)} bodů! Začni se snažit, ne? 💩`,
+        `${userAhead.name} tě předběhl! Seš prostě k ničemu...`,
+        `${pointsDiff.toFixed(1)} bodů za ${userAhead.name}! S tou fyzičkou to nedohoníš 🐌`,
+        `${userAhead.name} vyhrává o ${pointsDiff.toFixed(1)} bodů! Ty jsi prostě kokot slaboučkej.`,
+        `${pointsDiff.toFixed(1)} bodů rozdíl! Zvedni prdel, ne pivo! 🍺`
       ]
       messages.push({
         id: 'overtaken-close',
@@ -1229,7 +1233,9 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
         `${userAhead.name} je před tebou o ${pointsDiff.toFixed(1)} bodů. Proč tu vůbec seš? 🤦`,
         `${userAhead.name} tě vede o ${pointsDiff.toFixed(1)} bodů. Tvoje účast je akorát pro statistiku 📊`,
         `${pointsDiff.toFixed(1)} bodů za ${userAhead.name}... To nedoháníš ani kdybys měl raketu v prdeli 🚀`,
-        `${userAhead.name} je o ${pointsDiff.toFixed(1)} bodů lepší. Prostě smířit se s průměrem 🤷`
+        `${userAhead.name} je o ${pointsDiff.toFixed(1)} bodů lepší. Prostě smířit se s průměrem 🤷`,
+        `${pointsDiff.toFixed(1)} bodů náskok má ${userAhead.name}! Ty jsi prostě línej a tlustej 😴`,
+        `${userAhead.name} tě válcuje o ${pointsDiff.toFixed(1)} bodů! Tvoje fyzička je k smíchu 🤡`
       ]
       messages.push({
         id: 'overtaken-far',
@@ -1255,7 +1261,12 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       'Trénuješ na paraolympiádu? ♿',
       'Tvůj výkon je jako tvoje kariéra - neexistující 🤷',
       'Už jsi zvažoval jiný koníček? Třeba pletení? 🧶',
-      'S tímhle výkonem snad nedoběhneš ani k lednici 🍕'
+      'S tímhle výkonem nedoběhneš ani k lednici 🍕',
+      'Už si vybral pivo, co budeš kupovat na zapíjení? 🍺',
+      'Tvoje máma běhá rychlejc, když jde nakupovat 🛒',
+      'Tvoje fyzička je jako tvoje šance na výhru - nulová 🚫',
+      'Tvoje máma má lepší čas na 5km a ta váží přes metřák 🏃‍♀️',
+      'Tvoje tělo vypadá jako kdyby se vzdalo dřív než ty 🏳️'
     ]
     messages.push({
       id: 'last-place',
@@ -1272,11 +1283,20 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       `Už ${consistency.longestGap} dní nic... Chcípnul si ty mrdko? 💀`,
       `${consistency.longestGap} dní pauza? To se seš asi fakt dobře najedl! 🐷`,
       `${consistency.longestGap} dní klid zbraní? Já ti dám klid! 😤`,
+      `${consistency.longestGap} dní... Netflix a chill? Za takovej výkon ti ho stará nevykouří, ani když jí pustíš Emily in Paris 🍆`,
+      `${consistency.longestGap} dní bez aktivity? Tvoje boty už mají plíseň! 🦠`,
+      `${consistency.longestGap} dní nicnedělání? Tvoje kondice je na úrovni důchodce po mrtvici 👴`,
+      `${consistency.longestGap} dní líný jak prase... Aspoň že máš čas na chlast 🍺`,
+      `${consistency.longestGap} dní pauza? Tvoje máma by se styděla, kdyby nebyla zvyklá 😔`,
+      `${consistency.longestGap} dní bez pohybu? Jediný co se hýbe je tvoje tlama narvaná žrádlem 👄`,
+      `${consistency.longestGap} dní nicnedělání? Tvoje motivace nějak zmizela ty bečko sádla`,
+      `${consistency.longestGap} dní líný jak kokot... Doufám, že sis aspoň dokurvil koleno`,
+      `${consistency.longestGap} dní pauza? Snad ses aspoň dobře nažral 🐷`
     ]
     messages.push({
       id: 'inactive',
       type: 'inactive',
-      message: gapMessages[consistency.longestGap >= 7 ? 0 : 1],
+      message: gapMessages[consistency.longestGap >= 7 ? 0 : Math.floor(Math.random() * gapMessages.length)],
       timestamp: new Date().toISOString(),
       severity: consistency.longestGap >= 7 ? 'brutal' : 'medium'
     })
@@ -1289,11 +1309,15 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       `${userName} zase chlastat, klasika 🍺`,
       `Takže pivo ano, běhání ne? Dobrá strategie pro mrdku jako ${userName}! 🤦`,
       `${userName} má jasně nastavený priority: 🍺 > 🏃`,
-      `Vidím že ${userName} chlastá, místo aby zvedl prdel od kompu`,
+      `Vidím že ${userName} chlastá, místo aby zvedl prdel ze židle`,
       `Chlast je tvoje jediná disciplína, kde máš konzistentní výkon 🍻`,
       `S takhle oteklým obličejem bych taky radši nešel běhat 🥴`,
-      `Už si vybral pivo, co budeš kupovat na zapíjení?`,
-      `Pivní kilometr se do výzvy nepočítá, kokote 🏃‍♂️💨`
+      `Pivní kilometr se do výzvy nepočítá, kokote 🏃‍♂️💨`,
+      `${userName} běhá jen když mu dochází pivo v lednici 🍺`,
+      `Tvoje máma pije míň a má lepší fyzičku 🍻`,
+      `Chlastáš jak prasátko a vypadáš taky 🐷`,
+      `${userName} má víc piv v břiše než kilometrů na kontě 🍺`,
+      `Kdybys dal tolik energie do běhání jako do chlastání... stejně by to nestačilo`
     ]
     messages.push({
       id: 'drinking',
@@ -1331,7 +1355,11 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní... Tvůj gauč má větší opotřebení než boty 🛋️`,
       `${consistency.activeDaysPercent.toFixed(0)}% aktivita? To je víc času na Pornhub než na běhání 🔞`,
       `${consistency.activeDaysPercent.toFixed(0)}% konzistence? Konzistentnější jsi akorát v lenošení 💤`,
-      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Víc se hýbeš jen když jdeš na pivo 🍺`
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Víc se hýbeš jen když jdeš na pivo 🍺`,
+      `${consistency.activeDaysPercent.toFixed(0)}% dní? S tím břichem to ani jinak nejde, co? 🫃`,
+      `${consistency.activeDaysPercent.toFixed(0)}% konzistence! Tvoje fyzička vypadá jako tvoje snaha - nulová 💪`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní! Jediný co roste je tvoje ztráta`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Víc pohybu máš i ve spánku 😴`
     ]
     messages.push({
       id: 'lazy-ass',
