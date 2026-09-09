@@ -62,6 +62,7 @@ export default function Page() {
   const [comparisonToAverage, setComparisonToAverage] = useState<ComparisonToAverage | null>(null)
   const [achievements, setAchievements] = useState<Achievements | null>(null)
   const [trashTalk, setTrashTalk] = useState<TrashTalkMessage[]>([])
+  const [motivationMessage, setMotivationMessage] = useState<string>('')
   const entryFormRef = useRef<HTMLElement>(null)
 
   const CORRECT_PASSWORD = 'Vymrdanec2026*'
@@ -143,6 +144,12 @@ export default function Page() {
       setActivities(activitiesData)
       setPointsHistory(historyData)
 
+      // Načíst trash talk pro aktuálně vybraného uživatele
+      if (selectedUserId) {
+        const trashTalkData = await getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd)
+        setTrashTalk(trashTalkData)
+      }
+
       // Vybrat uživatele podle URL parametru ?kokot=Jmeno, jinak z localStorage, jinak prvního
       if (usersData.length > 0 && !selectedUserId) {
         const kokotParam = new URLSearchParams(window.location.search).get('kokot')
@@ -174,9 +181,12 @@ export default function Page() {
         const newUrl = new URL(window.location.href)
         newUrl.searchParams.set('kokot', user.name)
         window.history.replaceState({}, '', newUrl.toString())
+
+        // Aktualizovat trash talk pro nového uživatele
+        getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd).then(setTrashTalk)
       }
     }
-  }, [selectedUserId, users])
+  }, [selectedUserId, users, challengeStart, challengeEnd])
 
   // Načíst statistiky pro vybraného uživatele
   useEffect(() => {
@@ -224,29 +234,53 @@ export default function Page() {
     if (!selectedUserId || !isAuthenticated) return
 
     const today = new Date().toISOString().split('T')[0]
-    const result = await addActivity({
+    const activityData = {
       user_id: selectedUserId,
       date: today,
-      beh: parseFloat(beh),
-      kolo: parseFloat(kolo),
-      bazen: parseFloat(bazen),
-      kokotmetr: parseInt(kokotmetr),
+      beh: parseFloat(beh) || 0,
+      kolo: parseFloat(kolo) || 0,
+      bazen: parseFloat(bazen) || 0,
+      kokotmetr: parseInt(kokotmetr) || 0,
       no_alcohol: alcoholFree
-    })
+    }
+    console.log('Submitting activity:', activityData)
+    const result = await addActivity(activityData)
 
     if (result) {
       setSubmitted(true)
       setTimeout(() => setSubmitted(false), 1800)
 
+      // Resetovat formulář
+      setBeh('0')
+      setKolo('0')
+      setBasen('0')
+      setKokotmetr('0')
+      setAlcoholFree(false)
+
       // Obnovit data
-      const [newLeaderboard, newActivities, newHistory] = await Promise.all([
+      const [newLeaderboard, newActivities, newHistory, newTrashTalk] = await Promise.all([
         getLeaderboard(challengeStart, challengeEnd),
         getAllActivities(),
-        getPointsHistory(challengeStart, challengeEnd)
+        getPointsHistory(challengeStart, challengeEnd),
+        getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd)
       ])
       setLeaderboard(newLeaderboard)
       setActivities(newActivities)
       setPointsHistory(newHistory)
+      setTrashTalk(newTrashTalk)
+
+      // Zobrazit motivační hlášku, pokud není první
+      const userPosition = newLeaderboard.findIndex(u => u.id === selectedUserId)
+      if (userPosition > 0) {
+        const firstPlace = newLeaderboard[0]
+        const currentUser = newLeaderboard[userPosition]
+        const pointsDiff = firstPlace.total_points - currentUser.total_points
+        setMotivationMessage(`No výborně, na první místo ztrácíš už jenom ${pointsDiff.toFixed(1)} bodů!`)
+        // Hláška zůstane zobrazená - nezmizí automaticky
+      } else {
+        // Pokud je první, vymazat motivační hlášku
+        setMotivationMessage('')
+      }
     }
   }
 
@@ -474,6 +508,38 @@ export default function Page() {
               </select>
             </label>
 
+            {/* Instantní hejt v denním zápisu */}
+            {trashTalk.length > 0 && selectedUserId && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.75rem', color: '#666', letterSpacing: '0.05em' }}>💬 INSTANTNÍ HEJT</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {trashTalk.map((msg) => {
+                    const bgColor = msg.severity === 'brutal' ? '#fef2f2' : msg.severity === 'medium' ? '#fffbeb' : '#f0fdf4'
+                    const borderColor = msg.severity === 'brutal' ? '#fecaca' : msg.severity === 'medium' ? '#fef3c7' : '#bbf7d0'
+                    const textColor = msg.severity === 'brutal' ? '#991b1b' : msg.severity === 'medium' ? '#92400e' : '#166534'
+
+                    return (
+                      <div
+                        key={msg.id}
+                        style={{
+                          padding: '1rem',
+                          background: bgColor,
+                          border: `2px solid ${borderColor}`,
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          color: textColor,
+                          fontWeight: 600,
+                          lineHeight: '1.4'
+                        }}
+                      >
+                        {msg.message}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="field-row">
               <label>
                 <span>BĚH</span>
@@ -553,6 +619,24 @@ export default function Page() {
             <button className="submit-button" onClick={handleSubmit} disabled={!selectedUserId || loading}>
               {submitted ? <><Check /> Zapsáno!</> : <><Plus /> Zapsat aktivitu</>}
             </button>
+
+            {/* Motivační hláška po zadání */}
+            {motivationMessage && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '1rem',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                borderRadius: '12px',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                textAlign: 'center',
+                lineHeight: '1.4',
+                animation: 'slideIn 0.3s ease-out'
+              }}>
+                {motivationMessage}
+              </div>
+            )}
           </section>
         </>}
 
