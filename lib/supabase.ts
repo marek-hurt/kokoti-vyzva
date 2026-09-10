@@ -1585,24 +1585,45 @@ export async function getSettings(): Promise<AppSettings | null> {
   return data
 }
 
-// Funkce pro aktualizaci globálních nastavení
+// Funkce pro aktualizaci globálních nastavení (přes Edge Function)
 export async function updateSettings(updates: {
   challenge_start?: string
   challenge_end?: string
   sunny_day?: string | null
 }): Promise<AppSettings | null> {
-  const { data, error } = await supabase
-    .from('settings')
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', 'global')
-    .select()
-    .single()
+  try {
+    // Získat heslo z localStorage
+    const password = localStorage.getItem('globalPassword')
 
-  if (error) {
+    if (!password) {
+      console.error('Error updating settings: No password found in localStorage')
+      return null
+    }
+
+    // Zavolat Edge Function
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/update-settings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({
+        password,
+        updates
+      })
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      console.error('Error updating settings:', result.error)
+      return null
+    }
+
+    console.log('Settings updated successfully:', result.data)
+    return result.data
+  } catch (error) {
     console.error('Error updating settings:', error)
-    console.error('Error details:', JSON.stringify(error, null, 2))
     return null
   }
-
-  return data
 }
