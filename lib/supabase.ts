@@ -1408,8 +1408,8 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       const closeMessages = [
         `${userAhead.name} tě právě předběhl o ${pointsDiff.toFixed(1)} bodů, ty pičo! 😱`,
         `${userAhead.name} tě přeskočil o ${pointsDiff.toFixed(1)} bodů! Měl by ses stydět 🤡`,
-        `Jen ${pointsDiff.toFixed(1)} bodů ztrácíš na ${userAhead.name}... a stejně to nedoběhneš 🐌`,
-        `${userAhead.name} tě má o ${pointsDiff.toFixed(1)} bodů! Začni se snažit, ne? 💩`,
+        `Jen ${pointsDiff.toFixed(1)} bodů ztrácíš na ${userAhead.name}... a stejně ho nedáš...`,
+        `${userAhead.name} tě má o ${pointsDiff.toFixed(1)} bodů! Začni se snažit, ne? Sračko`,
         `${userAhead.name} tě předběhl! Seš prostě k ničemu...`,
         `${pointsDiff.toFixed(1)} bodů za ${userAhead.name}! S tou fyzičkou to nedohoníš 🐌`,
         `${userAhead.name} vyhrává o ${pointsDiff.toFixed(1)} bodů! Ty jsi prostě kokot slaboučkej.`,
@@ -1447,7 +1447,7 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       'Nebolí tě prdel z toho sudu? 🍺',
       'Gratuluju, jsi poslední! 💩',
       'Aspoň že máš jistý sud... 😂',
-      'Poslední kokot platí! 🤡',
+      'S takovým výkonem doufám, že nám nekoupíš Krakonoše!',
       'Letos na to dobře sereš! 💩',
       'Tvoje máma včera večer podávala lepší výkony 😏',
       'To běháš letos s análním kolíkem v prdeli? 🍑',
@@ -1506,10 +1506,10 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       `Vidím že ${userName} chlastá, místo aby zvedl prdel ze židle`,
       `Chlast je tvoje jediná disciplína, kde máš konzistentní výkon 🍻`,
       `S takhle oteklým obličejem bych taky radši nešel běhat 🥴`,
-      `Pivní kilometr se do výzvy nepočítá, kokote 🏃‍♂️💨`,
+      `kdyby se mohly zapisovat vypité metry piv, tak si stejně ve sračkách`,
       `${userName} běhá jen když mu dochází pivo v lednici 🍺`,
       `Tvoje máma pije míň a má lepší fyzičku 🍻`,
-      `Chlastáš jak prasátko a vypadáš taky 🐷`,
+      `Chlastáš jak prasátko a vypadáš taky tak 🐷`,
       `${userName} má víc piv v břiše než kilometrů na kontě 🍺`,
       `Kdybys dal tolik energie do běhání jako do chlastání... stejně by to nestačilo`
     ]
@@ -1548,12 +1548,12 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       `Jen ${consistency.activeDaysPercent.toFixed(0)}% aktivních dní? Ty seš fakt línej kokot! 😴`,
       `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní... Tvůj gauč má větší opotřebení než boty 🛋️`,
       `${consistency.activeDaysPercent.toFixed(0)}% aktivita? To je víc času na Pornhub než na běhání 🔞`,
-      `${consistency.activeDaysPercent.toFixed(0)}% konzistence? Konzistentnější jsi akorát v lenošení 💤`,
-      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Víc se hýbeš jen když jdeš na pivo 🍺`,
+      `${consistency.activeDaysPercent.toFixed(0)}% konzistence? Hlavně že furt nacházíš výmluvy, proč nejít`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Zapni si ty hodinky, aspoň když jdeš do Lidlu pro další chlast`,
       `${consistency.activeDaysPercent.toFixed(0)}% dní? S tím břichem to ani jinak nejde, co? 🫃`,
       `${consistency.activeDaysPercent.toFixed(0)}% konzistence! Tvoje fyzička vypadá jako tvoje snaha - nulová 💪`,
       `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní! Jediný co roste je tvoje ztráta`,
-      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Víc pohybu máš i ve spánku 😴`
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Víc pohybu máš i ve spánku. Nechej si schválně jednou běžet záznam přes noc`
     ]
     messages.push({
       id: 'lazy-ass',
@@ -1626,4 +1626,315 @@ export async function updateSettings(updates: {
     console.error('Error updating settings:', error)
     return null
   }
+}
+
+// Historická data z minulých ročníků
+const HISTORICAL_DATA = {
+  '2020': {
+    'Vojta': 385.27,
+    'Mára': 345.02,
+    'Rajny': 334.11,
+    'Rejža': 329.53,
+    'Drogi': 287.81
+  },
+  '2021': {
+    'Majkl': 368.91,
+    'Rejža': 339.02,
+    'Mára': 337.84,
+    'Rajny': 315.34,
+    'Vojta': 252.57,
+    'Drogi': 212.09,
+    'Peli': 187,
+    'Karel': 187,
+    'Fery': 68.7
+  },
+  '2022': {
+    'Vojta': 330.26,
+    'Rejža': 288.06,
+    'Karel': 263.85,
+    'Drogi': 244.86,
+    'Mára': 200,
+    'Rajny': 141.31,
+    'Fery': 122.91
+  },
+  '2023': {
+    'Vojta': 328.59,
+    'Rejža': 277.05,
+    'Majkl': 240.34,
+    'Drogi': 216.79,
+    'Náhlo': 195.04,
+    'Mára': 172.89,
+    'Karel': 156.76,
+    'Rajny': 127.11
+  },
+  '2024': {
+    'Míra': 400,
+    'Rajny': 341.26,
+    'Vojta': 321.65,
+    'Mára': 277.36,
+    'Rejža': 265.34,
+    'Adam': 250.06,
+    'Kafkič': 201.84,
+    'Matýso': 181.75,
+    'Drogi': 179.76,
+    'Lukyyy': 178.4,
+    'Karel': 139.48
+  },
+  '2025': {
+    'Míra': 284.76,
+    'Rejža': 263.99,
+    'Vojta': 260.17,
+    'Rajny': 259.48,
+    'Adam': 213.92,
+    'Kafkič': 202.2,
+    'Mára': 169.66,
+    'Drogi': 165.62,
+    'Karel': 64.42
+  }
+}
+
+export type YearPrediction = {
+  currentPoints: number
+  daysElapsed: number
+  totalDays: number
+  percentComplete: number
+  linearProjection: number
+  historicalAverage: number | null
+  historicalYears: { year: string; points: number }[]
+  comparisonToHistorical: number | null
+  trend: 'improving' | 'declining' | 'stable' | 'unknown'
+  message: string
+}
+
+export async function getYearPrediction(
+  userId: string,
+  userName: string,
+  startDate: string,
+  endDate: string
+): Promise<YearPrediction | null> {
+  // Získat aktuální body uživatele
+  const leaderboard = await getLeaderboard(startDate, endDate)
+  const userEntry = leaderboard.find(entry => entry.id === userId)
+
+  if (!userEntry) {
+    return null
+  }
+
+  // Vypočítat % dokončení
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const now = new Date()
+  const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  const daysElapsed = Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  const percentComplete = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100))
+
+  // Lineární projekce
+  const dailyAverage = daysElapsed > 0 ? userEntry.total_points / daysElapsed : 0
+  const linearProjection = dailyAverage * totalDays
+
+  // Historická data pro tohoto uživatele
+  const historicalYears: { year: string; points: number }[] = []
+  for (const [year, data] of Object.entries(HISTORICAL_DATA)) {
+    if (data[userName as keyof typeof data]) {
+      historicalYears.push({
+        year,
+        points: data[userName as keyof typeof data]
+      })
+    }
+  }
+
+  // Průměr z minulých let
+  const historicalAverage = historicalYears.length > 0
+    ? historicalYears.reduce((sum, y) => sum + y.points, 0) / historicalYears.length
+    : null
+
+  // Porovnání s historickým průměrem
+  const comparisonToHistorical = historicalAverage !== null
+    ? ((linearProjection - historicalAverage) / historicalAverage) * 100
+    : null
+
+  // Trend - zlepšuje se nebo zhoršuje?
+  let trend: 'improving' | 'declining' | 'stable' | 'unknown' = 'unknown'
+  if (historicalYears.length >= 2) {
+    const recent = historicalYears.slice(-2)
+    const diff = recent[1].points - recent[0].points
+    if (diff > 20) trend = 'improving'
+    else if (diff < -20) trend = 'declining'
+    else trend = 'stable'
+  }
+
+  // Zpráva
+  let message = ''
+  if (comparisonToHistorical !== null) {
+    if (comparisonToHistorical > 10) {
+      message = '🔥 Výborně! Letos jsi na tom mnohem lépe než obvykle!'
+    } else if (comparisonToHistorical > 0) {
+      message = '👍 Dobrá práce! Mírně lepší než tvůj průměr.'
+    } else if (comparisonToHistorical > -10) {
+      message = '😐 Slušný výkon, ale můžeš víc!'
+    } else {
+      message = '⚠️ Hoř! Letos trochu polevuješ...'
+    }
+  } else {
+    message = '🆕 První rok! Makej tvrdě!'
+  }
+
+  return {
+    currentPoints: userEntry.total_points,
+    daysElapsed,
+    totalDays,
+    percentComplete,
+    linearProjection: Math.round(linearProjection * 10) / 10,
+    historicalAverage: historicalAverage !== null ? Math.round(historicalAverage * 10) / 10 : null,
+    historicalYears,
+    comparisonToHistorical: comparisonToHistorical !== null ? Math.round(comparisonToHistorical * 10) / 10 : null,
+    trend,
+    message
+  }
+}
+
+// Typ pro historickou predikci
+export type HistoricalPrediction = {
+  name: string
+  expectedPoints: number
+  winProbability: number
+  odds: number  // Kurz na výhru (jako v sázkách)
+  historicalAverage: number
+  participationYears: number
+  lastYearPoints: number | null
+  trend: 'improving' | 'declining' | 'stable' | 'new'
+}
+
+// Funkce pro výpočet predikcí založených na historických datech
+export function getHistoricalPredictions(currentParticipantNames: string[]): HistoricalPrediction[] {
+  // Pro každý rok získat seřazený žebříček
+  const yearlyRankings: { [year: string]: { name: string, points: number, position: number }[] } = {}
+
+  Object.entries(HISTORICAL_DATA).forEach(([year, data]) => {
+    const sorted = Object.entries(data)
+      .map(([name, points]) => ({ name, points }))
+      .sort((a, b) => b.points - a.points)
+      .map((item, index) => ({ ...item, position: index + 1 }))
+    yearlyRankings[year] = sorted
+  })
+
+  // Vypočítat statistiky pro každého letošního účastníka
+  const predictions: HistoricalPrediction[] = []
+
+  currentParticipantNames.forEach(name => {
+    const yearlyPoints: number[] = []
+    const positions: number[] = []
+    let wins = 0
+    let recentWins = 0 // výhry v posledních 2 letech
+    let podiums = 0 // top 3
+
+    const years = Object.keys(yearlyRankings).sort()
+    years.forEach((year, idx) => {
+      const rankings = yearlyRankings[year]
+      const participant = rankings.find(r => r.name === name)
+      if (participant) {
+        yearlyPoints.push(participant.points)
+        positions.push(participant.position)
+        if (participant.position === 1) {
+          wins++
+          // Poslední 2 roky = index >= (celkový počet let - 2)
+          if (idx >= years.length - 2) recentWins++
+        }
+        if (participant.position <= 3) podiums++
+      }
+    })
+
+    if (yearlyPoints.length === 0) return
+
+    // Průměr bodů za všechny roky
+    const historicalAverage = yearlyPoints.reduce((sum, p) => sum + p, 0) / yearlyPoints.length
+
+    // Průměrné umístění
+    const avgPosition = positions.reduce((sum, p) => sum + p, 0) / positions.length
+
+    // Poslední rok
+    const lastYearPoints = yearlyPoints[yearlyPoints.length - 1]
+
+    // Trend - porovnat poslední 2 roky (pokud existují)
+    let trend: 'improving' | 'declining' | 'stable' | 'new' = 'new'
+    if (yearlyPoints.length >= 2) {
+      const diff = yearlyPoints[yearlyPoints.length - 1] - yearlyPoints[yearlyPoints.length - 2]
+      if (diff > 20) trend = 'improving'
+      else if (diff < -20) trend = 'declining'
+      else trend = 'stable'
+    } else if (yearlyPoints.length === 1) {
+      trend = 'new'
+    }
+
+    // Očekávané body - váha 70% historický průměr, 30% poslední rok (pokud existuje)
+    const expectedPoints = yearlyPoints.length >= 2
+      ? historicalAverage * 0.7 + lastYearPoints * 0.3
+      : historicalAverage
+
+    predictions.push({
+      name,
+      expectedPoints: Math.round(expectedPoints * 10) / 10,
+      winProbability: 0, // Vypočítáme později
+      odds: 0, // Vypočítáme později
+      historicalAverage: Math.round(historicalAverage * 10) / 10,
+      participationYears: yearlyPoints.length,
+      lastYearPoints,
+      trend,
+      wins, // dočasně přidáme pro výpočet
+      recentWins, // dočasně přidáme pro výpočet
+      avgPosition // dočasně přidáme pro výpočet
+    } as any)
+  })
+
+  // Vypočítar pravděpodobnost vítězství s ohledem na:
+  // 1. Očekávané body (60%)
+  // 2. Průměrné umístění (25%)
+  // 3. Počet výher v minulosti (15%)
+
+  const maxExpectedPoints = Math.max(...predictions.map(p => (p as any).expectedPoints))
+  const maxWins = Math.max(...predictions.map(p => (p as any).wins), 1)
+  const minAvgPosition = Math.min(...predictions.map(p => (p as any).avgPosition))
+  const maxAvgPosition = Math.max(...predictions.map(p => (p as any).avgPosition))
+
+  predictions.forEach((p: any) => {
+    // Normalizované skóre (0-1)
+    const pointsScore = p.expectedPoints / maxExpectedPoints
+    const winsScore = p.wins / maxWins
+    const positionScore = maxAvgPosition > minAvgPosition
+      ? 1 - (p.avgPosition - minAvgPosition) / (maxAvgPosition - minAvgPosition)
+      : 1
+
+    // Bonus za výhry:
+    // - Nedávné výhry (poslední 2 roky) = +15% každá
+    // - Starší výhry = +5% každá
+    const recentWinBonus = p.recentWins * 0.15
+    const olderWinBonus = (p.wins - p.recentWins) * 0.05
+
+    // Vážený celkový score s bonusem za výhry
+    p.competitiveScore = (pointsScore * 0.5) + (positionScore * 0.2) + (winsScore * 0.1) + recentWinBonus + olderWinBonus
+  })
+
+  // Softmax s vyšší teplotou (4.0) pro větší rozdíly mezi favority a outsidery
+  const expScores = predictions.map((p: any) => Math.exp(p.competitiveScore * 4.0))
+  const sumExpScores = expScores.reduce((sum, s) => sum + s, 0)
+
+  predictions.forEach((p: any, i) => {
+    const probability = (expScores[i] / sumExpScores) * 100
+    p.winProbability = Math.round(probability * 10) / 10
+
+    // Kurz s menším bookmaker margin (2%)
+    const fairOdds = 100 / probability
+    p.odds = Math.round(fairOdds * 1.02 * 100) / 100
+
+    // Vyčistit dočasné proměnné
+    delete p.wins
+    delete p.recentWins
+    delete p.avgPosition
+    delete p.competitiveScore
+  })
+
+  // Seřadit podle pravděpodobnosti
+  predictions.sort((a, b) => b.winProbability - a.winProbability)
+
+  return predictions
 }

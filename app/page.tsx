@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings } from '@/lib/supabase'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction } from '@/lib/supabase'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, PieChart, Pie, Cell } from 'recharts'
 
 export default function Page() {
@@ -64,6 +64,8 @@ export default function Page() {
   const [achievements, setAchievements] = useState<Achievements | null>(null)
   const [trashTalk, setTrashTalk] = useState<TrashTalkMessage[]>([])
   const [motivationMessage, setMotivationMessage] = useState<string>('')
+  const [yearPrediction, setYearPrediction] = useState<YearPrediction | null>(null)
+  const [historicalPredictions, setHistoricalPredictions] = useState<HistoricalPrediction[]>([])
   const entryFormRef = useRef<HTMLElement>(null)
 
   const CORRECT_PASSWORD = 'Vymrdanec2026*'
@@ -197,7 +199,10 @@ export default function Page() {
   useEffect(() => {
     async function loadStats() {
       if (statsUserId) {
-        const [streaks, breakdown, position, averages, best, weekly, dayOfWeek, consistency, comparison, achievementsData, trashTalkData] = await Promise.all([
+        const statsUser = users.find(u => u.id === statsUserId)
+        const userName = statsUser?.name || ''
+
+        const [streaks, breakdown, position, averages, best, weekly, dayOfWeek, consistency, comparison, achievementsData, trashTalkData, prediction] = await Promise.all([
           getUserStreaks(statsUserId, challengeStart, challengeEnd),
           getPointsBreakdown(statsUserId, challengeStart, challengeEnd),
           getPositionStats(statsUserId, challengeStart, challengeEnd),
@@ -208,7 +213,8 @@ export default function Page() {
           getConsistencyScore(statsUserId, challengeStart, challengeEnd),
           getComparisonToAverage(statsUserId, challengeStart, challengeEnd),
           getAchievements(statsUserId, challengeStart, challengeEnd),
-          getTrashTalkFeed(statsUserId, challengeStart, challengeEnd)
+          getTrashTalkFeed(statsUserId, challengeStart, challengeEnd),
+          getYearPrediction(statsUserId, userName, challengeStart, challengeEnd)
         ])
         setUserStreaks(streaks)
         setPointsBreakdown(breakdown)
@@ -221,10 +227,16 @@ export default function Page() {
         setComparisonToAverage(comparison)
         setAchievements(achievementsData)
         setTrashTalk(trashTalkData)
+        setYearPrediction(prediction)
+
+        // Load historical predictions (synchronous function) - pouze pro letošní účastníky
+        const currentParticipantNames = users.map(u => u.name)
+        const historicalPreds = getHistoricalPredictions(currentParticipantNames)
+        setHistoricalPredictions(historicalPreds)
       }
     }
     loadStats()
-  }, [statsUserId, challengeStart, challengeEnd])
+  }, [statsUserId, challengeStart, challengeEnd, users])
 
   // Nastavit statsUserId na selectedUserId při prvním načtení
   useEffect(() => {
@@ -1067,9 +1079,6 @@ export default function Page() {
                           <div style={{ fontSize: '1rem', fontWeight: 600, color: '#22c55e' }}>
                             {achievements.weeklyBadges.abstinentTydne.map(u => u.userName).join(', ')}
                           </div>
-                          {achievements.weeklyBadges.abstinentTydne.some(u => u.userId === statsUserId) && (
-                            <div style={{ fontSize: '0.75rem', color: '#166534', marginTop: '0.5rem' }}>Čistá hlava! 💪</div>
-                          )}
                         </div>
                       )}
                       {achievements.weeklyBadges.alkacTydne.length > 0 && (
@@ -1520,6 +1529,95 @@ export default function Page() {
                     </ResponsiveContainer>
                   </div>
                 </div>
+
+                {/* Predikce na základě aktuálního tempa */}
+                {yearPrediction && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>
+                      🔮 Predikce letošního roku (aktuální tempo)
+                    </h3>
+
+                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Aktuální body:</span>
+                        <span style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{yearPrediction.currentPoints.toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Lineární projekce:</span>
+                        <span style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{yearPrediction.linearProjection.toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Historický průměr:</span>
+                        <span style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{yearPrediction.historicalAverage > 0 ? yearPrediction.historicalAverage.toFixed(2) : 'N/A'}</span>
+                      </div>
+                    </div>
+
+                    {yearPrediction.historicalAverage > 0 && (
+                      <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '12px', border: '1px solid #bfdbfe', marginBottom: '1rem' }}>
+                        <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem', color: '#1e40af' }}>
+                          Trend: <strong>{yearPrediction.trendDescription}</strong>
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: '#1e40af' }}>
+                          {yearPrediction.linearProjection > yearPrediction.historicalAverage
+                            ? `Tempo ${((yearPrediction.linearProjection / yearPrediction.historicalAverage - 1) * 100).toFixed(1)}% nad historickým průměrem`
+                            : `Tempo ${((1 - yearPrediction.linearProjection / yearPrediction.historicalAverage) * 100).toFixed(1)}% pod historickým průměrem`}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '12px', border: '1px solid #bbf7d0', fontSize: '0.875rem', lineHeight: 1.6, color: '#166534' }}>
+                      {yearPrediction.message}
+                    </div>
+                  </div>
+                )}
+
+                {/* Predikce na základě historických dat */}
+                {historicalPredictions.length > 0 && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>
+                      🎯 Predikce na základě minulých let
+                    </h3>
+                    <div style={{ fontSize: '0.875rem', marginBottom: '1rem', color: '#64748b' }}>
+                      Očekávané výsledky podle dat z let 2020-2025
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
+                      {historicalPredictions.map((pred, index) => (
+                        <div
+                          key={pred.name}
+                          style={{
+                            background: pred.name === users.find(u => u.id === statsUserId)?.name ? '#f0fdf4' : '#f8fafc',
+                            padding: '1rem',
+                            borderRadius: '12px',
+                            border: pred.name === users.find(u => u.id === statsUserId)?.name ? '2px solid #10b981' : '1px solid #e3ece4'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{index + 1}.</span>
+                              <span style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{pred.name}</span>
+                              {pred.trend === 'improving' && <span style={{ fontSize: '1rem' }}>📈</span>}
+                              {pred.trend === 'declining' && <span style={{ fontSize: '1rem' }}>📉</span>}
+                              {pred.trend === 'new' && <span style={{ fontSize: '1rem' }}>🆕</span>}
+                            </div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10b981' }}>{pred.expectedPoints} bodů</div>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                            <div>
+                              Kurz: <strong style={{ color: '#f59e0b', fontSize: '1.1rem' }}>{pred.odds.toFixed(2)}</strong>
+                            </div>
+                            <div>
+                              Šance: <strong style={{ color: '#173b29' }}>{pred.winProbability}%</strong>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            Účast: {pred.participationYears} {pred.participationYears === 1 ? 'rok' : pred.participationYears < 5 ? 'roky' : 'let'} | Ø {pred.historicalAverage} | Loni: {pred.lastYearPoints !== null ? pred.lastYearPoints : 'N/A'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </section>
@@ -1577,7 +1675,7 @@ export default function Page() {
               </p>
             </div>
 
-            <div style={{ background: '#f0fdf4', padding: '1.5rem', borderRadius: '16px', border: '1px solid #86efac' }}>
+            <div style={{ background: '#f0fdf4', padding: '1.5rem', borderRadius: '16px', border: '1px solid #86efac', marginBottom: '1rem' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', color: '#166534' }}>📚 Uplynulé ročníky</h3>
               <a
                 href="https://docs.google.com/spreadsheets/d/1NCxuQcFut1ymm5xpk4a0QHl4cHWin1oyNlt2vn97x_Y/edit?usp=sharing"
