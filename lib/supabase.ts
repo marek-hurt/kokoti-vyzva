@@ -43,8 +43,17 @@ export type LeaderboardEntry = {
   total_points: number
 }
 
+export type AppSettings = {
+  id: string
+  challenge_start: string
+  challenge_end: string
+  sunny_day: string | null
+  created_at: string
+  updated_at: string
+}
+
 // API funkce
-export async function getLeaderboard(startDate?: string, endDate?: string): Promise<LeaderboardEntry[]> {
+export async function getLeaderboard(startDate?: string, endDate?: string, sunnyDay?: string): Promise<LeaderboardEntry[]> {
   // Pokud jsou zadané datumy, vypočítáme leaderboard z aktivit v daném rozmezí
   if (startDate && endDate) {
     const { data: activities, error } = await supabase
@@ -60,6 +69,19 @@ export async function getLeaderboard(startDate?: string, endDate?: string): Prom
     if (error || usersError || !activities || !users) {
       console.error('Error fetching data:', error, usersError)
       return []
+    }
+
+    // Najít nejvyšší počet piv ve sluníčkový den
+    let maxBeersOnSunnyDay = 0
+    let sunnyDayWinnerId: string | null = null
+    if (sunnyDay) {
+      const sunnyDayActivities = activities.filter(a => a.date === sunnyDay)
+      sunnyDayActivities.forEach(activity => {
+        if (activity.kokotmetr > maxBeersOnSunnyDay) {
+          maxBeersOnSunnyDay = activity.kokotmetr
+          sunnyDayWinnerId = activity.user_id
+        }
+      })
     }
 
     // Vypočítat leaderboard z filtrovaných aktivit
@@ -84,18 +106,35 @@ export async function getLeaderboard(startDate?: string, endDate?: string): Prom
     activities.forEach(activity => {
       const entry = leaderboardMap.get(activity.user_id)
       if (entry) {
-        entry.total_beh += activity.beh
-        entry.total_kolo += activity.kolo
-        entry.total_bazen += activity.bazen
-        entry.total_kokotmetr += activity.kokotmetr
-        if (activity.no_alcohol) entry.sober_days += 1
+        const isSunnyDay = sunnyDay && activity.date === sunnyDay
 
-        // Výpočet bodů
-        entry.total_points += activity.beh +
-                             Math.floor(activity.kolo / 10) * 2 +
-                             Math.floor(activity.bazen) * 2 +
-                             activity.kokotmetr +
-                             (activity.no_alcohol ? 1 : 0)
+        if (isSunnyDay) {
+          // Ve sluníčkový den: kokotmetr je počet piv, běh/kolo/bazén se nepočítá
+          // Kokotmetr (piva) se započítává jen vítězi
+          if (activity.user_id === sunnyDayWinnerId) {
+            entry.total_kokotmetr += activity.kokotmetr
+            entry.total_points += activity.kokotmetr // 1 pivo = 1 bod
+          }
+          // Bod za nepití alkoholu se počítá normálně
+          if (activity.no_alcohol) {
+            entry.sober_days += 1
+            entry.total_points += 1
+          }
+        } else {
+          // Normální den
+          entry.total_beh += activity.beh
+          entry.total_kolo += activity.kolo
+          entry.total_bazen += activity.bazen
+          entry.total_kokotmetr += activity.kokotmetr
+          if (activity.no_alcohol) entry.sober_days += 1
+
+          // Výpočet bodů
+          entry.total_points += activity.beh +
+                               Math.floor(activity.kolo / 10) * 2 +
+                               Math.floor(activity.bazen) * 2 +
+                               activity.kokotmetr +
+                               (activity.no_alcohol ? 1 : 0)
+        }
       }
     })
 
@@ -138,11 +177,47 @@ export async function addActivity(activity: {
   bazen: number
   kokotmetr: number
   no_alcohol: boolean
-}): Promise<Activity | null> {
+}, sunnyDay?: string): Promise<Activity | null> {
+  let finalActivity = { ...activity }
+
+  // Ve sluníčkový den: zkontrolovat, jestli je kokotmetr nejvyšší
+  if (sunnyDay && activity.date === sunnyDay) {
+    // Najít všechny aktivity ve sluníčkový den
+    const { data: sunnyDayActivities, error: fetchError } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('date', sunnyDay)
+      .neq('user_id', activity.user_id)  // kromě aktuálního uživatele
+
+    if (!fetchError && sunnyDayActivities) {
+      const maxKokotmetr = Math.max(
+        ...sunnyDayActivities.map(a => a.kokotmetr),
+        0
+      )
+
+      // Pokud nová hodnota není vyšší než max, nastavit na 0
+      if (activity.kokotmetr <= maxKokotmetr) {
+        finalActivity.kokotmetr = 0
+      } else {
+        // Nová hodnota je nejvyšší - vynulovat ostatní
+        await supabase
+          .from('activities')
+          .update({ kokotmetr: 0, updated_at: new Date().toISOString() })
+          .eq('date', sunnyDay)
+          .neq('user_id', activity.user_id)
+      }
+    }
+
+    // Ve sluníčkový den ignorovat běh/kolo/bazén
+    finalActivity.beh = 0
+    finalActivity.kolo = 0
+    finalActivity.bazen = 0
+  }
+
   // Použít upsert - pokud záznam existuje, aktualizuje ho, jinak vytvoří nový
   const { data, error } = await supabase
     .from('activities')
-    .upsert([{ ...activity, updated_at: new Date().toISOString() }], {
+    .upsert([{ ...finalActivity, updated_at: new Date().toISOString() }], {
       onConflict: 'user_id,date'
     })
     .select()
@@ -164,11 +239,63 @@ export async function updateActivity(
     bazen?: number
     kokotmetr?: number
     no_alcohol?: boolean
-  }
+  },
+  sunnyDay?: string
 ): Promise<Activity | null> {
+  // Nejdřív získat aktuální aktivitu, abychom znali datum a user_id
+  const { data: currentActivity, error: fetchError } = await supabase
+    .from('activities')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (fetchError || !currentActivity) {
+    console.error('Error fetching activity:', fetchError)
+    return null
+  }
+
+  let finalUpdates = { ...updates }
+
+  // Ve sluníčkový den: zkontrolovat kokotmetr a vynulovat běh/kolo/bazén
+  if (sunnyDay && currentActivity.date === sunnyDay) {
+    // Ve sluníčkový den vynulovat běh/kolo/bazén
+    finalUpdates.beh = 0
+    finalUpdates.kolo = 0
+    finalUpdates.bazen = 0
+
+    // Pokud se updatuje kokotmetr
+    if (updates.kokotmetr !== undefined) {
+      // Najít všechny ostatní aktivity ve sluníčkový den
+      const { data: sunnyDayActivities, error: fetchError2 } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('date', sunnyDay)
+        .neq('user_id', currentActivity.user_id)
+
+      if (!fetchError2 && sunnyDayActivities) {
+        const maxKokotmetr = Math.max(
+          ...sunnyDayActivities.map(a => a.kokotmetr),
+          0
+        )
+
+        // Pokud nová hodnota není vyšší než max, nastavit na 0
+        if (updates.kokotmetr <= maxKokotmetr) {
+          finalUpdates.kokotmetr = 0
+        } else {
+          // Nová hodnota je nejvyšší - vynulovat ostatní
+          await supabase
+            .from('activities')
+            .update({ kokotmetr: 0, updated_at: new Date().toISOString() })
+            .eq('date', sunnyDay)
+            .neq('user_id', currentActivity.user_id)
+        }
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from('activities')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...finalUpdates, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()
@@ -1438,4 +1565,41 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
   }
 
   return messages
+}
+
+// Funkce pro načtení globálních nastavení
+export async function getSettings(): Promise<AppSettings | null> {
+  const { data, error } = await supabase
+    .from('settings')
+    .select('*')
+    .eq('id', 'global')
+    .single()
+
+  if (error) {
+    console.error('Error fetching settings:', error)
+    return null
+  }
+
+  return data
+}
+
+// Funkce pro aktualizaci globálních nastavení
+export async function updateSettings(updates: {
+  challenge_start?: string
+  challenge_end?: string
+  sunny_day?: string | null
+}): Promise<AppSettings | null> {
+  const { data, error } = await supabase
+    .from('settings')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', 'global')
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating settings:', error)
+    return null
+  }
+
+  return data
 }

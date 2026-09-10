@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage } from '@/lib/supabase'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings } from '@/lib/supabase'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, PieChart, Pie, Cell } from 'recharts'
 
 export default function Page() {
@@ -47,6 +47,7 @@ export default function Page() {
   const [isSettingsUnlocked, setIsSettingsUnlocked] = useState(false)
   const [challengeStart, setChallengeStart] = useState('2026-08-01')
   const [challengeEnd, setChallengeEnd] = useState('2026-09-30')
+  const [sunnyDay, setSunnyDay] = useState('')
   const [globalPassword, setGlobalPassword] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [showLoginScreen, setShowLoginScreen] = useState(true)
@@ -67,15 +68,19 @@ export default function Page() {
 
   const CORRECT_PASSWORD = 'Vymrdanec2026*'
 
-  // Načíst nastavení výzvy a heslo z localStorage
+  // Načíst nastavení výzvy z databáze a heslo z localStorage
   useEffect(() => {
-    const savedStart = localStorage.getItem('challengeStart')
-    const savedEnd = localStorage.getItem('challengeEnd')
+    async function loadSettings() {
+      const settings = await getSettings()
+      if (settings) {
+        setChallengeStart(settings.challenge_start)
+        setChallengeEnd(settings.challenge_end)
+        setSunnyDay(settings.sunny_day || '')
+      }
+    }
+    loadSettings()
+
     const savedPassword = localStorage.getItem('globalPassword')
-
-    if (savedStart) setChallengeStart(savedStart)
-    if (savedEnd) setChallengeEnd(savedEnd)
-
     if (savedPassword === CORRECT_PASSWORD) {
       setIsAuthenticated(true)
       setShowLoginScreen(false)
@@ -134,7 +139,7 @@ export default function Page() {
     async function fetchData() {
       setLoading(true)
       const [leaderboardData, usersData, activitiesData, historyData] = await Promise.all([
-        getLeaderboard(challengeStart, challengeEnd),
+        getLeaderboard(challengeStart, challengeEnd, sunnyDay),
         getUsers(),
         getAllActivities(),
         getPointsHistory(challengeStart, challengeEnd)
@@ -168,7 +173,7 @@ export default function Page() {
       setLoading(false)
     }
     fetchData()
-  }, [challengeStart, challengeEnd])
+  }, [challengeStart, challengeEnd, sunnyDay])
 
   // Uložit vybraného uživatele do localStorage a URL při změně
   useEffect(() => {
@@ -244,7 +249,7 @@ export default function Page() {
       no_alcohol: alcoholFree
     }
     console.log('Submitting activity:', activityData)
-    const result = await addActivity(activityData)
+    const result = await addActivity(activityData, sunnyDay)
 
     if (result) {
       setSubmitted(true)
@@ -259,7 +264,7 @@ export default function Page() {
 
       // Obnovit data
       const [newLeaderboard, newActivities, newHistory, newTrashTalk] = await Promise.all([
-        getLeaderboard(challengeStart, challengeEnd),
+        getLeaderboard(challengeStart, challengeEnd, sunnyDay),
         getAllActivities(),
         getPointsHistory(challengeStart, challengeEnd),
         getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd)
@@ -292,7 +297,7 @@ export default function Page() {
     const success = await deleteActivity(id)
     if (success) {
       const [newLeaderboard, newActivities] = await Promise.all([
-        getLeaderboard(challengeStart, challengeEnd),
+        getLeaderboard(challengeStart, challengeEnd, sunnyDay),
         getAllActivities()
       ])
       setLeaderboard(newLeaderboard)
@@ -322,12 +327,12 @@ export default function Page() {
       bazen: parseFloat(editValues.bazen),
       kokotmetr: parseInt(editValues.kokotmetr),
       no_alcohol: editValues.no_alcohol
-    })
+    }, sunnyDay)
 
     if (result) {
       setEditingId(null)
       const [newLeaderboard, newActivities, newHistory] = await Promise.all([
-        getLeaderboard(challengeStart, challengeEnd),
+        getLeaderboard(challengeStart, challengeEnd, sunnyDay),
         getAllActivities(),
         getPointsHistory(challengeStart, challengeEnd)
       ])
@@ -855,28 +860,79 @@ export default function Page() {
                     </tr>
                   </thead>
                   <tbody>
-                    {dailyDates.map(date => (
-                      <tr key={date} style={{ borderBottom: '1px solid #222' }}>
-                        <td style={{ padding: '0.5rem', whiteSpace: 'nowrap', position: 'sticky', left: 0, background: '#f3f7f2', zIndex: 5 }}>{new Date(date).toLocaleDateString('cs-CZ')}</td>
-                        {users.map(user => {
-                          const activity = activities.find(a => a.date === date && a.user_id === user.id)
-                          const noAlcohol = activity ? activity.no_alcohol : false
-                          const bg = noAlcohol ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)'
-                          const points = activity
-                            ? activity.beh + Math.floor(activity.kolo / 10) * 2 + Math.floor(activity.bazen) * 2 + (activity.no_alcohol ? 1 : 0)
-                            : 0
-                          const kokotmetr = activity ? activity.kokotmetr : 0
+                    {dailyDates.map(date => {
+                      const isSunnyDay = sunnyDay && date === sunnyDay
 
-                          return (
-                            <Fragment key={user.id}>
-                              <td style={{ padding: '0.5rem', textAlign: 'right', background: bg, borderLeft: '1px solid #222' }}>{points}</td>
-                              <td style={{ padding: '0.5rem', textAlign: 'right', background: bg }}>{kokotmetr}</td>
-                              <td style={{ padding: '0.5rem', textAlign: 'center', background: bg }}>{noAlcohol ? '✅' : '🍺'}</td>
-                            </Fragment>
-                          )
-                        })}
-                      </tr>
-                    ))}
+                      // Najít max kokotmetr ve sluníčkový den
+                      let maxKokotmetrOnSunnyDay = 0
+                      if (isSunnyDay) {
+                        activities
+                          .filter(a => a.date === date)
+                          .forEach(a => {
+                            if (a.kokotmetr > maxKokotmetrOnSunnyDay) {
+                              maxKokotmetrOnSunnyDay = a.kokotmetr
+                            }
+                          })
+                      }
+
+                      return (
+                        <tr key={date} style={{
+                          borderBottom: '1px solid #222',
+                          background: isSunnyDay ? '#fef08a' : 'transparent'
+                        }}>
+                          <td style={{
+                            padding: '0.5rem',
+                            whiteSpace: 'nowrap',
+                            position: 'sticky',
+                            left: 0,
+                            background: isSunnyDay ? '#fef08a' : '#f3f7f2',
+                            zIndex: 5
+                          }}>
+                            {isSunnyDay && '🌞 '}
+                            {new Date(date).toLocaleDateString('cs-CZ')}
+                          </td>
+                          {users.map(user => {
+                            const activity = activities.find(a => a.date === date && a.user_id === user.id)
+                            const noAlcohol = activity ? activity.no_alcohol : false
+
+                            // Ve sluníčkový den je celý řádek žlutý, jinak zelená/červená podle alkoholu
+                            const bg = isSunnyDay
+                              ? '#fef08a'
+                              : (noAlcohol ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)')
+
+                            // Ve sluníčkový den se body z běhu/kola/bazénu nepočítají
+                            let points = 0
+                            let kokotmetr = 0
+
+                            if (activity) {
+                              if (isSunnyDay) {
+                                // Ve sluníčkový den: pouze bod za nepití + body za piva (jen pro vítěze)
+                                points = (activity.no_alcohol ? 1 : 0)
+                                // Kokotmetr se zobrazuje jen vítězi, ostatním 0
+                                if (activity.kokotmetr === maxKokotmetrOnSunnyDay && maxKokotmetrOnSunnyDay > 0) {
+                                  kokotmetr = activity.kokotmetr
+                                  points += activity.kokotmetr  // 1 pivo = 1 bod
+                                } else {
+                                  kokotmetr = 0
+                                }
+                              } else {
+                                // Normální den
+                                points = activity.beh + Math.floor(activity.kolo / 10) * 2 + Math.floor(activity.bazen) * 2 + (activity.no_alcohol ? 1 : 0)
+                                kokotmetr = activity.kokotmetr
+                              }
+                            }
+
+                            return (
+                              <Fragment key={user.id}>
+                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg, borderLeft: '1px solid #222' }}>{points}</td>
+                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg }}>{kokotmetr}</td>
+                                <td style={{ padding: '0.5rem', textAlign: 'center', background: bg }}>{noAlcohol ? '✅' : '🍺'}</td>
+                              </Fragment>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -920,7 +976,7 @@ export default function Page() {
                     </div>
                     <div style={{ fontSize: '3rem', fontWeight: 700 }}>{achievements.shameLevel}%</div>
                     <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
-                      {achievements.shameLevel >= 80 ? 'Kokot!! Pohni sebou!' : achievements.shameLevel >= 60 ? 'Dost slabý výkon...' : 'Nejen že si tady navíc, ale si taky k tomu navíc ještě tlustej!'}
+                      {achievements.shameLevel >= 80 ? 'Nejen že si tady navíc, ale si taky k tomu navíc ještě tlustej!' : achievements.shameLevel >= 60 ? 'Nejen že si tady navíc, ale si taky k tomu navíc ještě tlustej!' : 'Nejen že si tady navíc, ale si taky k tomu navíc ještě tlustej!'}
                     </div>
                   </div>
                 )}
@@ -1579,9 +1635,10 @@ export default function Page() {
                   <input
                     type="date"
                     value={challengeStart}
-                    onChange={(e) => {
-                      setChallengeStart(e.target.value)
-                      localStorage.setItem('challengeStart', e.target.value)
+                    onChange={async (e) => {
+                      const newValue = e.target.value
+                      setChallengeStart(newValue)
+                      await updateSettings({ challenge_start: newValue })
                     }}
                     style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d8e7da', fontSize: '1rem' }}
                   />
@@ -1593,11 +1650,28 @@ export default function Page() {
                   <input
                     type="date"
                     value={challengeEnd}
-                    onChange={(e) => {
-                      setChallengeEnd(e.target.value)
-                      localStorage.setItem('challengeEnd', e.target.value)
+                    onChange={async (e) => {
+                      const newValue = e.target.value
+                      setChallengeEnd(newValue)
+                      await updateSettings({ challenge_end: newValue })
                     }}
                     style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d8e7da', fontSize: '1rem' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#555' }}>
+                    🌞 Sluníčkový den (body se nepočítají, pouze piva)
+                  </label>
+                  <input
+                    type="date"
+                    value={sunnyDay}
+                    onChange={async (e) => {
+                      const newValue = e.target.value
+                      setSunnyDay(newValue)
+                      await updateSettings({ sunny_day: newValue || null })
+                    }}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #fef3c7', background: '#fffbeb', fontSize: '1rem' }}
+                    placeholder="Nevyplněno"
                   />
                 </div>
                 <div style={{ padding: '1rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
