@@ -913,7 +913,7 @@ export default function Page() {
                 {/* Gauge of Shame - pokud je nad 50 */}
                 {achievements.shameLevel > 50 && (
                   <div style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', padding: '1.5rem', borderRadius: '16px', marginBottom: '1.5rem', color: '#fff', textAlign: 'center', boxShadow: '0 4px 20px rgba(239, 68, 68, 0.3)' }}>
-                    <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>😱 GAUGE OF SHAME</h3>
+                    <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>😱 HANBOMETR</h3>
                     <div style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '1rem' }}>Tvoje úroveň hanby</div>
                     <div style={{ position: 'relative', height: '20px', background: 'rgba(255,255,255,0.2)', borderRadius: '10px', overflow: 'hidden', marginBottom: '0.5rem' }}>
                       <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${achievements.shameLevel}%`, background: '#fff', borderRadius: '10px', transition: 'width 0.5s ease' }} />
@@ -959,10 +959,27 @@ export default function Page() {
                 )}
 
                 {/* Týdenní hanby/ocenění */}
-                {(achievements.weeklyBadges.mrdkaTydne.userName || achievements.weeklyBadges.alkacTydne.userName) && (
+                {(achievements.weeklyBadges.mrdkaTydne.userName || achievements.weeklyBadges.alkacTydne.length > 0 || achievements.weeklyBadges.abstinentTydne.length > 0 || achievements.weeklyBadges.comebackTydne.userName) && (
                   <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🏅 Týdenní (ne)ocenění</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                      {achievements.weeklyBadges.comebackTydne.userName && (
+                        <div style={{
+                          padding: '1rem',
+                          borderRadius: '8px',
+                          border: '2px solid',
+                          borderColor: achievements.weeklyBadges.comebackTydne.userId === statsUserId ? '#10b981' : '#e3ece4',
+                          background: achievements.weeklyBadges.comebackTydne.userId === statsUserId ? '#f0fdf4' : '#f8fafc',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔥</div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#173b29', marginBottom: '0.25rem' }}>Comeback týdne</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#10b981' }}>{achievements.weeklyBadges.comebackTydne.userName}</div>
+                          {achievements.weeklyBadges.comebackTydne.userId === statsUserId && (
+                            <div style={{ fontSize: '0.75rem', color: '#166534', marginTop: '0.5rem' }}>Tak to si se vytáh! 💪</div>
+                          )}
+                        </div>
+                      )}
                       {achievements.weeklyBadges.mrdkaTydne.userName && (
                         <div style={{
                           padding: '1rem',
@@ -980,21 +997,39 @@ export default function Page() {
                           )}
                         </div>
                       )}
-                      {achievements.weeklyBadges.alkacTydne.userName && (
+                      {achievements.weeklyBadges.abstinentTydne.length > 0 && (
                         <div style={{
                           padding: '1rem',
                           borderRadius: '8px',
                           border: '2px solid',
-                          borderColor: achievements.weeklyBadges.alkacTydne.userId === statsUserId ? '#f59e0b' : '#e3ece4',
-                          background: achievements.weeklyBadges.alkacTydne.userId === statsUserId ? '#fffbeb' : '#f8fafc',
+                          borderColor: achievements.weeklyBadges.abstinentTydne.some(u => u.userId === statsUserId) ? '#22c55e' : '#e3ece4',
+                          background: achievements.weeklyBadges.abstinentTydne.some(u => u.userId === statsUserId) ? '#f0fdf4' : '#f8fafc',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💚</div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#173b29', marginBottom: '0.25rem' }}>Abstinent týdne</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#22c55e' }}>
+                            {achievements.weeklyBadges.abstinentTydne.map(u => u.userName).join(', ')}
+                          </div>
+                          {achievements.weeklyBadges.abstinentTydne.some(u => u.userId === statsUserId) && (
+                            <div style={{ fontSize: '0.75rem', color: '#166534', marginTop: '0.5rem' }}>Čistá hlava! 💪</div>
+                          )}
+                        </div>
+                      )}
+                      {achievements.weeklyBadges.alkacTydne.length > 0 && (
+                        <div style={{
+                          padding: '1rem',
+                          borderRadius: '8px',
+                          border: '2px solid',
+                          borderColor: achievements.weeklyBadges.alkacTydne.some(u => u.userId === statsUserId) ? '#f59e0b' : '#e3ece4',
+                          background: achievements.weeklyBadges.alkacTydne.some(u => u.userId === statsUserId) ? '#fffbeb' : '#f8fafc',
                           textAlign: 'center'
                         }}>
                           <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🍺</div>
                           <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#173b29', marginBottom: '0.25rem' }}>Alkáč týdne</div>
-                          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#f59e0b' }}>{achievements.weeklyBadges.alkacTydne.userName}</div>
-                          {achievements.weeklyBadges.alkacTydne.userId === statsUserId && (
-                            <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: '0.5rem' }}>Pěkně se zapíjí! 🍻</div>
-                          )}
+                          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#f59e0b' }}>
+                            {achievements.weeklyBadges.alkacTydne.map(u => u.userName).join(', ')}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1003,7 +1038,7 @@ export default function Page() {
 
                 {/* Achievements grid */}
                 <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🏆 Achievements & Badges</h3>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🏆 Odznáčky</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
                     {achievements.badges.map((badge) => (
                       <div

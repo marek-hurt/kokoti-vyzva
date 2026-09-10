@@ -966,7 +966,8 @@ export type Achievements = {
   badges: Badge[]
   weeklyBadges: {
     mrdkaTydne: { userId: string | null; userName: string | null } // Nejlínější kokot týdne
-    alkacTydne: { userId: string | null; userName: string | null } // Nejvíc dní s alkoholem tento týden
+    alkacTydne: Array<{ userId: string; userName: string }> // Nejvíc dní s alkoholem tento týden (může být víc)
+    abstinentTydne: Array<{ userId: string; userName: string }> // Nejvíc dní bez alkoholu (může být víc)
     comebackTydne: { userId: string | null; userName: string | null } // Největší zlepšení tento týden
   }
   shameLevel: number // 0-100, jak moc by se měl stydět
@@ -1144,26 +1145,91 @@ export async function getAchievements(userId: string, startDate?: string, endDat
     }
   })
 
-  // Alkáč týdne - nejvíc dní s alkoholem (nejméně sober days)
-  let alkacTydne = { userId: null as string | null, userName: null as string | null }
+  // Alkáč týdne - nejvíc dní s alkoholem (nejméně sober days) - může být víc lidí se stejnou hodnotou
+  let alkacTydne: Array<{ userId: string; userName: string }> = []
   let minSoberDays = Infinity
   weeklyUserStats.forEach((stats, uid) => {
     if (stats.soberDays < minSoberDays) {
       minSoberDays = stats.soberDays
-      alkacTydne = { userId: uid, userName: stats.name }
+      alkacTydne = [{ userId: uid, userName: stats.name }]
+    } else if (stats.soberDays === minSoberDays) {
+      alkacTydne.push({ userId: uid, userName: stats.name })
     }
   })
 
-  // Comeback týdne - největší zlepšení oproti předchozímu týdnu
-  // (Pro zjednodušení zatím null, můžeme rozšířit později)
-  const comebackTydne = { userId: null as string | null, userName: null as string | null }
+  // Abstinent týdne - nejvíc dní bez alkoholu - může být víc lidí se stejnou hodnotou
+  let abstinentTydne: Array<{ userId: string; userName: string }> = []
+  let maxSoberDays = 0
+  weeklyUserStats.forEach((stats, uid) => {
+    if (stats.soberDays > maxSoberDays) {
+      maxSoberDays = stats.soberDays
+      abstinentTydne = [{ userId: uid, userName: stats.name }]
+    } else if (stats.soberDays === maxSoberDays && maxSoberDays > 0) {
+      abstinentTydne.push({ userId: uid, userName: stats.name })
+    }
+  })
+
+  // Comeback týdne - největší nárůst pozice v žebříčku za poslední týden
+  let comebackTydne = { userId: null as string | null, userName: null as string | null }
+
+  // Získat žebříček před týdnem a současný žebříček
+  const twoWeeksAgo = new Date(weekAgo)
+  twoWeeksAgo.setDate(weekAgo.getDate() - 7)
+  const twoWeeksAgoStr = twoWeeksAgo.toISOString().split('T')[0]
+
+  const [oldLeaderboard, currentLeaderboard] = await Promise.all([
+    getLeaderboard(startDate, weekAgoStr), // Žebříček před týdnem
+    getLeaderboard(startDate, nowStr) // Aktuální žebříček
+  ])
+
+  // Spočítat nárůst pozice pro každého uživatele
+  let maxPositionGain = 0
+  let maxPointsThisWeek = 0
+  let fallbackUser = { userId: null as string | null, userName: null as string | null }
+
+  currentLeaderboard.forEach((currentUser, currentIndex) => {
+    const oldIndex = oldLeaderboard.findIndex(u => u.id === currentUser.id)
+
+    if (oldIndex !== -1) {
+      const positionGain = oldIndex - currentIndex // Pozitivní = zlepšení
+
+      // Spočítat body za tento týden
+      const oldPoints = oldLeaderboard[oldIndex].total_points
+      const pointsGained = currentUser.total_points - oldPoints
+
+      // Primární kritérium: největší nárůst pozice (ale ne první -> první)
+      if (positionGain > 0 && positionGain > maxPositionGain) {
+        // Nekontrolovat pokud zůstal první
+        if (!(oldIndex === 0 && currentIndex === 0)) {
+          maxPositionGain = positionGain
+          comebackTydne = { userId: currentUser.id, userName: currentUser.name }
+        }
+      }
+
+      // Sekundární kritérium: nejvíc bodů tento týden (jako fallback)
+      if (pointsGained > maxPointsThisWeek && currentIndex !== 0) {
+        maxPointsThisWeek = pointsGained
+        fallbackUser = { userId: currentUser.id, userName: currentUser.name }
+      }
+    }
+  })
+
+  // Pokud nikdo nikoho nepřeskočil, použít fallback (nejvíc bodů)
+  if (maxPositionGain === 0 && maxPointsThisWeek > 0) {
+    comebackTydne = fallbackUser
+  }
 
   // Shame level (0-100)
   let shameLevel = 0
   if (consistency.activeDaysPercent < 50) shameLevel += 30
   if (soberPercent < 30) shameLevel += 25
   if (consistency.longestGap >= 7) shameLevel += 25
-  if (totalPoints < 50) shameLevel += 20
+
+  // Pokud jsi ve druhé polovině pořadí
+  const userPosition = leaderboard.findIndex(u => u.id === userId)
+  const isInBottomHalf = userPosition >= Math.floor(leaderboard.length / 2)
+  if (isInBottomHalf) shameLevel += 20
+
   shameLevel = Math.min(100, shameLevel)
 
   return {
@@ -1171,6 +1237,7 @@ export async function getAchievements(userId: string, startDate?: string, endDat
     weeklyBadges: {
       mrdkaTydne,
       alkacTydne,
+      abstinentTydne,
       comebackTydne
     },
     shameLevel

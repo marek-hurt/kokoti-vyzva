@@ -4,7 +4,10 @@
       "Bash(pnpm install)",
       "Bash(git add -A)",
       "Bash(git commit -m \"Globalni heslo pro pristup, synchronizace URL parametru s vybranym userem, uprava pozice TY badge\")",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(tasklist)",
+      "Bash(npm run dev -- -p 3001)",
+      "Bash(rm -rf .next)"
     ],
     "deny": [],
     "ask": []
