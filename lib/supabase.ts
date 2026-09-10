@@ -1577,9 +1577,11 @@ export async function getSettings(): Promise<AppSettings | null> {
 
   if (error) {
     console.error('Error fetching settings:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
     return null
   }
 
+  console.log('Settings loaded from DB:', data)
   return data
 }
 
@@ -1598,6 +1600,7 @@ export async function updateSettings(updates: {
 
   if (error) {
     console.error('Error updating settings:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
     return null
   }
 
