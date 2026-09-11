@@ -229,9 +229,9 @@ export default function Page() {
         setTrashTalk(trashTalkData)
         setYearPrediction(prediction)
 
-        // Load historical predictions (synchronous function) - pouze pro letošní účastníky
+        // Load historical predictions (async function) - pouze pro letošní účastníky
         const currentParticipantNames = users.map(u => u.name)
-        const historicalPreds = getHistoricalPredictions(currentParticipantNames)
+        const historicalPreds = await getHistoricalPredictions(currentParticipantNames, challengeStart, challengeEnd)
         setHistoricalPredictions(historicalPreds)
       }
     }

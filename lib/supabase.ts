@@ -1475,8 +1475,7 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
   if (consistency.longestGap >= 3) {
     const gapMessages = [
       `Už ${consistency.longestGap} dní nic... Chcípnul si ty mrdko? 💀`,
-      `${consistency.longestGap} dní pauza? To se seš asi fakt dobře najedl! 🐷`,
-      `${consistency.longestGap} dní klid zbraní? Já ti dám klid! 😤`,
+      `${consistency.longestGap} dní pauza? To se ses asi fakt dobře najedl! 🐷`,
       `${consistency.longestGap} dní... Netflix a chill? Za takovej výkon ti ho stará nevykouří, ani když jí pustíš Emily in Paris 🍆`,
       `${consistency.longestGap} dní bez aktivity? Tvoje boty už mají plíseň! 🦠`,
       `${consistency.longestGap} dní nicnedělání? Tvoje kondice je na úrovni důchodce po mrtvici 👴`,
@@ -1485,6 +1484,8 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       `${consistency.longestGap} dní bez pohybu? Jediný co se hýbe je tvoje tlama narvaná žrádlem 👄`,
       `${consistency.longestGap} dní nicnedělání? Tvoje motivace nějak zmizela ty bečko sádla`,
       `${consistency.longestGap} dní líný jak kokot... Doufám, že sis aspoň dokurvil koleno`,
+      `${consistency.longestGap} dní na to sereš, tebe stačí už jenom trefit jateční pistolí`,
+      `${consistency.longestGap} sluníčkových dní, tebe by letos natřela i moje jednonohá 9 let mrtvá bába`,
       `${consistency.longestGap} dní pauza? Snad ses aspoň dobře nažral 🐷`
     ]
     messages.push({
@@ -1806,7 +1807,22 @@ export type HistoricalPrediction = {
 }
 
 // Funkce pro výpočet predikcí založených na historických datech
-export function getHistoricalPredictions(currentParticipantNames: string[]): HistoricalPrediction[] {
+export async function getHistoricalPredictions(
+  currentParticipantNames: string[],
+  startDate: string,
+  endDate: string
+): Promise<HistoricalPrediction[]> {
+  // Získat letošní data
+  const currentLeaderboard = await getLeaderboard(startDate, endDate)
+
+  // Vypočítat % dokončení letošního roku
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const now = new Date()
+  const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  const daysElapsed = Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  const percentComplete = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100))
+
   // Pro každý rok získat seřazený žebříček
   const yearlyRankings: { [year: string]: { name: string, points: number, position: number }[] } = {}
 
@@ -1844,16 +1860,36 @@ export function getHistoricalPredictions(currentParticipantNames: string[]): His
       }
     })
 
-    if (yearlyPoints.length === 0) return
+    // Získat letošní data pro tohoto účastníka
+    const currentEntry = currentLeaderboard.find(entry => entry.name === name)
+    let currentYearProjection = 0
+    let currentYearPosition = 0
 
-    // Průměr bodů za všechny roky
-    const historicalAverage = yearlyPoints.reduce((sum, p) => sum + p, 0) / yearlyPoints.length
+    if (currentEntry && percentComplete > 0) {
+      // Lineární projekce letošního roku
+      const dailyAverage = daysElapsed > 0 ? currentEntry.total_points / daysElapsed : 0
+      currentYearProjection = dailyAverage * totalDays
 
-    // Průměrné umístění
-    const avgPosition = positions.reduce((sum, p) => sum + p, 0) / positions.length
+      // Aktuální pozice v letošním roce
+      currentYearPosition = currentLeaderboard
+        .sort((a, b) => b.total_points - a.total_points)
+        .findIndex(e => e.name === name) + 1
+    }
+
+    if (yearlyPoints.length === 0 && !currentEntry) return
+
+    // Průměr bodů za všechny roky (minulé)
+    const historicalAverage = yearlyPoints.length > 0
+      ? yearlyPoints.reduce((sum, p) => sum + p, 0) / yearlyPoints.length
+      : 0
+
+    // Průměrné umístění (minulé)
+    const avgPosition = positions.length > 0
+      ? positions.reduce((sum, p) => sum + p, 0) / positions.length
+      : 5 // default pro nové účastníky
 
     // Poslední rok
-    const lastYearPoints = yearlyPoints[yearlyPoints.length - 1]
+    const lastYearPoints = yearlyPoints.length > 0 ? yearlyPoints[yearlyPoints.length - 1] : null
 
     // Trend - porovnat poslední 2 roky (pokud existují)
     let trend: 'improving' | 'declining' | 'stable' | 'new' = 'new'
@@ -1866,10 +1902,41 @@ export function getHistoricalPredictions(currentParticipantNames: string[]): His
       trend = 'new'
     }
 
-    // Očekávané body - váha 70% historický průměr, 30% poslední rok (pokud existuje)
-    const expectedPoints = yearlyPoints.length >= 2
-      ? historicalAverage * 0.7 + lastYearPoints * 0.3
-      : historicalAverage
+    // Očekávané body - dynamická váha podle % dokončení letošního roku
+    // Na začátku roku: více váhy na historii
+    // Ke konci roku: více váhy na letošní výkon
+    let expectedPoints = 0
+
+    if (percentComplete < 10) {
+      // Začátek roku - 100% historická data
+      expectedPoints = yearlyPoints.length >= 2
+        ? historicalAverage * 0.7 + (lastYearPoints || 0) * 0.3
+        : historicalAverage || 250
+    } else if (percentComplete < 30) {
+      // 10-30% - postupně zahrnujeme letošní data
+      const historicalWeight = 0.8
+      const currentWeight = 0.2
+      const historicalPrediction = yearlyPoints.length >= 2
+        ? historicalAverage * 0.7 + (lastYearPoints || 0) * 0.3
+        : historicalAverage || 250
+      expectedPoints = historicalPrediction * historicalWeight + currentYearProjection * currentWeight
+    } else if (percentComplete < 60) {
+      // 30-60% - rovnováha mezi historií a letošním rokem
+      const historicalWeight = 0.5
+      const currentWeight = 0.5
+      const historicalPrediction = yearlyPoints.length >= 2
+        ? historicalAverage * 0.7 + (lastYearPoints || 0) * 0.3
+        : historicalAverage || 250
+      expectedPoints = historicalPrediction * historicalWeight + currentYearProjection * currentWeight
+    } else {
+      // 60%+ - hlavně letošní výkon
+      const historicalWeight = 0.2
+      const currentWeight = 0.8
+      const historicalPrediction = yearlyPoints.length >= 2
+        ? historicalAverage * 0.7 + (lastYearPoints || 0) * 0.3
+        : historicalAverage || 250
+      expectedPoints = historicalPrediction * historicalWeight + currentYearProjection * currentWeight
+    }
 
     predictions.push({
       name,
@@ -1882,7 +1949,9 @@ export function getHistoricalPredictions(currentParticipantNames: string[]): His
       trend,
       wins, // dočasně přidáme pro výpočet
       recentWins, // dočasně přidáme pro výpočet
-      avgPosition // dočasně přidáme pro výpočet
+      avgPosition, // dočasně přidáme pro výpočet
+      currentYearPosition, // dočasně přidáme pro výpočet
+      percentComplete // dočasně přidáme pro výpočet
     } as any)
   })
 
@@ -1910,8 +1979,21 @@ export function getHistoricalPredictions(currentParticipantNames: string[]): His
     const recentWinBonus = p.recentWins * 0.15
     const olderWinBonus = (p.wins - p.recentWins) * 0.05
 
-    // Vážený celkový score s bonusem za výhry
-    p.competitiveScore = (pointsScore * 0.5) + (positionScore * 0.2) + (winsScore * 0.1) + recentWinBonus + olderWinBonus
+    // Bonus za letošní umístění - čím víc dat letos máme, tím větší váha
+    let currentPositionBonus = 0
+    if (p.currentYearPosition > 0 && p.percentComplete > 10) {
+      // Top 3 letos = extra bonus
+      if (p.currentYearPosition === 1) {
+        currentPositionBonus = 0.25 * (p.percentComplete / 100) // až +25% pokud je 1. celý rok
+      } else if (p.currentYearPosition === 2) {
+        currentPositionBonus = 0.15 * (p.percentComplete / 100) // až +15%
+      } else if (p.currentYearPosition === 3) {
+        currentPositionBonus = 0.08 * (p.percentComplete / 100) // až +8%
+      }
+    }
+
+    // Vážený celkový score s bonusy
+    p.competitiveScore = (pointsScore * 0.5) + (positionScore * 0.2) + (winsScore * 0.1) + recentWinBonus + olderWinBonus + currentPositionBonus
   })
 
   // Softmax s vyšší teplotou (4.0) pro větší rozdíly mezi favority a outsidery
@@ -1930,6 +2012,8 @@ export function getHistoricalPredictions(currentParticipantNames: string[]): His
     delete p.wins
     delete p.recentWins
     delete p.avgPosition
+    delete p.currentYearPosition
+    delete p.percentComplete
     delete p.competitiveScore
   })
 
