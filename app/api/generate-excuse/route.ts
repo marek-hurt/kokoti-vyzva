@@ -8,25 +8,19 @@ const groq = new Groq({
 
 export async function POST(req: Request) {
   try {
-    const { userName, stats } = await req.json()
+    const { stats } = await req.json()
 
-    const systemPrompt = `Jsi cynický asistent. Odpovídej POUZE výmluvu, bez vysvětlování.
-Styl: sarkastický, vulgární humor mezi kámoši. Používej "kokot", "sračka" atd.
-Výmluvy proč někdo neběžel - musí být KREATIVNÍ, absurdní, neuveřitelné, trochu urážlivé.
+    const systemPrompt = `Vygeneruj absurdní, vtipnou výmluvu v první osobě (já/mně/musel jsem).
 
-DŮLEŽITÉ:
-- Odpověz POUZE 1-2 větami výmluvy, nic víc!
-- Buď co nejvíc KREATIVNÍ a ORIGINÁLNÍ!
-- NIKDY neopakuj šablony jako "gauč + Netflix", "pršelo", "odpočinek"
-- Vymysli absurdní, nečekanou výmluvu!
+PRAVIDLA:
+- Maximálně 1-2 věty
+- Používej vulgární humor
+- Výmluva musí být naprostý nesmysl, ale vtipný
+- Každá odpověď musí být ÚPLNĚ JINÁ než předchozí
 
-Příklady KREATIVNÍCH odpovědí:
-"Musel jsem zachraňovat sousedovic kaktusy před čínskou mafií"
-"Měl jsem důležitý meeting s mimozemšťany ohledně budoucnosti lidstva, ty kokote"
-"Dostal jsem zranění od agresivní salámy v lednici"
-"Běžecký trenér mi volal, že mám mít rest day... ano, volal mi ve snu"`
+Formát: "Dnes jsem nešel běhat, protože [něco úplně absurdního]"`
 
-    let userContext = `Napiš vtipnou výmluvu (1-2 věty) proč ${userName} dnes neběžel:`
+    let userContext = `Vygeneruj výmluvu:`
 
     if (stats) {
       if (stats.daysSinceLastActivity > 3) {
@@ -46,7 +40,7 @@ Příklady KREATIVNÍCH odpovědí:
         { role: 'user', content: userContext }
       ],
       model: 'groq/compound', // Groq's general purpose model
-      temperature: 1.3, // Vyšší teplota = kreativnější odpovědi
+      temperature: 1.8, // Extrémní náhodnost
       max_tokens: 100
     })
 
