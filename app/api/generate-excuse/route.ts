@@ -16,21 +16,18 @@ PRAVIDLA:
 - Maximálně 1-2 věty
 - Používej vulgární humor
 - Výmluva musí být naprostý nesmysl, ale vtipný
-- Každá odpověď musí být ÚPLNĚ JINÁ než předchozí
+- Každá odpověď musí být ÚPLNĚ JINÁ než předchozí s jiným základem PROČ
 
 Formát: "Dnes jsem nešel běhat, protože [něco úplně absurdního]"`
 
     let userContext = `Vygeneruj výmluvu:`
 
     if (stats) {
-      if (stats.daysSinceLastActivity > 3) {
-        userContext += ` Neběžel už ${stats.daysSinceLastActivity} dní, takže výmluva musí být extra kreativní.`
+      if (stats.daysSinceLastActivity > 2) {
+        userContext += ` Neběžel už ${stats.daysSinceLastActivity} dní, takže výmluva musí být extra kreativní, vysvětlující, proč vynechal tolik dní. V tomto případě klidně i 5 vět.`
       }
       if (stats.position > 5) {
-        userContext += ` Je na ${stats.position}. místě, takže si zaslouží pořádný hejt.`
-      }
-      if (stats.alcoholDays > 0) {
-        userContext += ` Minulý týden chlastal ${stats.alcoholDays}x.`
+        userContext += ` Je na ${stats.position}. místě, takže by měl mít ještě absurdnější výmluvu.`
       }
     }
 
