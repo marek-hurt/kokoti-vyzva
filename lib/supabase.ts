@@ -1548,9 +1548,9 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
     const lazyMessages = [
       `Jen ${consistency.activeDaysPercent.toFixed(0)}% aktivních dní? Ty seš fakt línej kokot! 😴`,
       `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní... Tvůj gauč má větší opotřebení než boty 🛋️`,
-      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? To je víc času na Pornhub než na běhání 🔞`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? To je víc času na Pornhubu než na běhání 🔞`,
       `${consistency.activeDaysPercent.toFixed(0)}% konzistence? Hlavně že furt nacházíš výmluvy, proč nejít`,
-      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Zapni si ty hodinky, aspoň když jdeš do Lidlu pro další chlast`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Zapni si ty hodinky, aspoň když jdeš do večerky pro další chlast`,
       `${consistency.activeDaysPercent.toFixed(0)}% dní? S tím břichem to ani jinak nejde, co? 🫃`,
       `${consistency.activeDaysPercent.toFixed(0)}% konzistence! Tvoje fyzička vypadá jako tvoje snaha - nulová 💪`,
       `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní! Jediný co roste je tvoje ztráta`,

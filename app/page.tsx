@@ -66,6 +66,8 @@ export default function Page() {
   const [motivationMessage, setMotivationMessage] = useState<string>('')
   const [yearPrediction, setYearPrediction] = useState<YearPrediction | null>(null)
   const [historicalPredictions, setHistoricalPredictions] = useState<HistoricalPrediction[]>([])
+  const [excuse, setExcuse] = useState<string>('')
+  const [generatingExcuse, setGeneratingExcuse] = useState(false)
   const entryFormRef = useRef<HTMLElement>(null)
 
   const CORRECT_PASSWORD = 'Vymrdanec2026*'
@@ -245,6 +247,52 @@ export default function Page() {
     }
   }, [selectedUserId])
 
+  // Funkce pro generování výmluvy
+  async function generateExcuse() {
+    if (!statsUserId) return
+
+    setGeneratingExcuse(true)
+    setExcuse('')
+
+    try {
+      const statsUser = users.find(u => u.id === statsUserId)
+      const userName = statsUser?.name || 'Kokot'
+
+      // Získat statistiky pro kontext
+      const stats = {
+        daysSinceLastActivity: 0,
+        position: 0,
+        alcoholDays: 0
+      }
+
+      if (activities.length > 0) {
+        const userActivities = activities.filter(a => a.user_id === statsUserId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        if (userActivities.length > 0) {
+          const lastActivity = new Date(userActivities[0].date)
+          const today = new Date()
+          stats.daysSinceLastActivity = Math.floor((today.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
+        }
+      }
+
+      if (positionStats) {
+        stats.position = positionStats.position
+      }
+
+      const response = await fetch('/api/generate-excuse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userName, stats })
+      })
+
+      const data = await response.json()
+      setExcuse(data.excuse)
+    } catch (error) {
+      console.error('Error generating excuse:', error)
+      setExcuse('Chyba při generování výmluvy... asi jako obvykle všechno selže.')
+    } finally {
+      setGeneratingExcuse(false)
+    }
+  }
 
   // Funkce pro přidání aktivity
   async function handleSubmit() {
@@ -1145,6 +1193,47 @@ export default function Page() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Generátor výmluv */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🎲 Generátor výmluv</h3>
+                  <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}>
+                    Neběžel jsi? Nech AI vygenerovat kreativní výmluvu!
+                  </p>
+                  <button
+                    onClick={generateExcuse}
+                    disabled={generatingExcuse}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      background: generatingExcuse ? '#e3ece4' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      cursor: generatingExcuse ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {generatingExcuse ? 'Generuji...' : '🎲 Vygenerovat výmluvu'}
+                  </button>
+                  {excuse && (
+                    <div style={{
+                      marginTop: '1rem',
+                      padding: '1rem',
+                      background: '#fffbeb',
+                      border: '2px solid #fef3c7',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      color: '#92400e',
+                      fontWeight: 600,
+                      fontStyle: 'italic'
+                    }}>
+                      "{excuse}"
+                    </div>
+                  )}
                 </div>
 
                 {/* Pozice a náskok/ztráta */}
