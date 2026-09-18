@@ -1349,17 +1349,22 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   })
 
   // Alkáč týdne - nejvíc dní s alkoholem (nejméně sober days) - může být víc lidí se stejnou hodnotou
-  // POUZE pokud má aspoň 1 den S alkoholem (tj. soberDays < activeDays)
   let alkacTydne: Array<{ userId: string; userName: string }> = []
   let minSoberDays = Infinity
   weeklyUserStats.forEach((stats, uid) => {
-    if (stats.soberDays < minSoberDays && stats.soberDays < stats.activeDays) {
+    if (stats.soberDays < minSoberDays) {
       minSoberDays = stats.soberDays
       alkacTydne = [{ userId: uid, userName: stats.name }]
-    } else if (stats.soberDays === minSoberDays && stats.soberDays < stats.activeDays) {
+    } else if (stats.soberDays === minSoberDays) {
       alkacTydne.push({ userId: uid, userName: stats.name })
     }
   })
+
+  // Pokud všichni mají stejný počet sober days (např. všichni 7/7), zrušit alkáče
+  const allSameSoberDays = Array.from(weeklyUserStats.values()).every(s => s.soberDays === minSoberDays)
+  if (allSameSoberDays && minSoberDays === Array.from(weeklyUserStats.values())[0]?.activeDays) {
+    alkacTydne = []
+  }
 
   // Abstinent týdne - nejvíc dní bez alkoholu - může být víc lidí se stejnou hodnotou
   // POUZE pokud má aspoň 1 den bez alkoholu
