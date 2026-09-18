@@ -1137,15 +1137,15 @@ export async function getAchievements(userId: string, startDate?: string, endDat
     unlocked: consistency.longestGap >= 7
   })
 
-  // 🍺 Alkáč - Méně než 30% dní bez alkoholu
+  // 🍺 Alkáč - 100% dní s alkoholem (0% sober days)
   const soberPercent = (dailyAverages.soberDaysPercent || 0)
   badges.push({
     id: 'alkac',
     name: 'Alkáč',
-    description: 'Méně než 30% dní bez alkoholu',
+    description: '100% dní s alkoholem',
     emoji: '🍺',
     type: 'shame',
-    unlocked: soberPercent < 30
+    unlocked: soberPercent === 0
   })
 
   // 🏃 Kokotí legenda - Více než 300 km běhu
