@@ -1131,7 +1131,7 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   badges.push({
     id: 'tyden-nula',
     name: 'Týden Nula',
-    description: 'Celý týden bez aktivity... hanba!',
+    description: 'Seš úplně k hovnu',
     emoji: '💀',
     type: 'shame',
     unlocked: consistency.longestGap >= 7
@@ -1162,9 +1162,9 @@ export async function getAchievements(userId: string, startDate?: string, endDat
 
   badges.push({
     id: 'kokoti-legenda',
-    name: 'Kokotí Legenda',
+    name: 'Kenenisa Bekele',
     description: 'Více než 300 km běhu',
-    emoji: '🏃',
+    emoji: '🏃🏿',
     type: 'achievement',
     unlocked: totalBeh >= 300
   })
@@ -1217,7 +1217,7 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   badges.push({
     id: 'konzistentni-mrdka',
     name: 'Konzistentní Mrdka',
-    description: 'Skvělá konzistence, ale pomalý výkon',
+    description: 'Skvělá konzistence, ale výkony napiču',
     emoji: '🐌',
     type: 'achievement',
     unlocked: consistency.score >= 80 && totalPoints < 100
@@ -1226,7 +1226,7 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   // 💪 Warrior - Více než 400 bodů
   badges.push({
     id: 'warrior',
-    name: 'Warrior',
+    name: 'Totální čůrák',
     description: 'Více než 400 bodů',
     emoji: '💪',
     type: 'achievement',
@@ -1349,22 +1349,24 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   })
 
   // Alkáč týdne - nejvíc dní s alkoholem (nejméně sober days) - může být víc lidí se stejnou hodnotou
+  // POUZE pokud má aspoň 1 den S alkoholem (tj. soberDays < activeDays)
   let alkacTydne: Array<{ userId: string; userName: string }> = []
   let minSoberDays = Infinity
   weeklyUserStats.forEach((stats, uid) => {
-    if (stats.soberDays < minSoberDays) {
+    if (stats.soberDays < minSoberDays && stats.soberDays < stats.activeDays) {
       minSoberDays = stats.soberDays
       alkacTydne = [{ userId: uid, userName: stats.name }]
-    } else if (stats.soberDays === minSoberDays) {
+    } else if (stats.soberDays === minSoberDays && stats.soberDays < stats.activeDays) {
       alkacTydne.push({ userId: uid, userName: stats.name })
     }
   })
 
   // Abstinent týdne - nejvíc dní bez alkoholu - může být víc lidí se stejnou hodnotou
+  // POUZE pokud má aspoň 1 den bez alkoholu
   let abstinentTydne: Array<{ userId: string; userName: string }> = []
   let maxSoberDays = 0
   weeklyUserStats.forEach((stats, uid) => {
-    if (stats.soberDays > maxSoberDays) {
+    if (stats.soberDays > maxSoberDays && stats.soberDays > 0) {
       maxSoberDays = stats.soberDays
       abstinentTydne = [{ userId: uid, userName: stats.name }]
     } else if (stats.soberDays === maxSoberDays && maxSoberDays > 0) {
@@ -1482,14 +1484,14 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
 
     if (pointsDiff < 20) {
       const closeMessages = [
-        `${userAhead.name} tě právě předběhl o ${pointsDiff.toFixed(1)} bodů, ty pičo! 😱`,
-        `${userAhead.name} tě přeskočil o ${pointsDiff.toFixed(1)} bodů! Měl by ses stydět 🤡`,
+        `${userAhead.name} tě právě předběhl o ${pointsDiff.toFixed(1)} bodů, ty pičo!`,
+        `${userAhead.name} tě přeskočil o ${pointsDiff.toFixed(1)} bodů! Měl by ses stydět`,
         `Jen ${pointsDiff.toFixed(1)} bodů ztrácíš na ${userAhead.name}... a stejně ho nedáš...`,
         `${userAhead.name} tě má o ${pointsDiff.toFixed(1)} bodů! Začni se snažit, ne? Sračko`,
         `${userAhead.name} tě předběhl! Seš prostě k ničemu...`,
-        `${pointsDiff.toFixed(1)} bodů za ${userAhead.name}! S tou fyzičkou to nedohoníš 🐌`,
+        `${pointsDiff.toFixed(1)} bodů za ${userAhead.name}! S tou fyzičkou to nedohoníš`,
         `${userAhead.name} vyhrává o ${pointsDiff.toFixed(1)} bodů! Ty jsi prostě kokot slaboučkej.`,
-        `${pointsDiff.toFixed(1)} bodů rozdíl! Zvedni prdel, ne pivo! 🍺`
+        `${pointsDiff.toFixed(1)} bodů rozdíl! Zvedni prdel, ne pivo!`
       ]
       messages.push({
         id: 'overtaken-close',
@@ -1500,12 +1502,12 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       })
     } else {
       const farMessages = [
-        `${userAhead.name} je před tebou o ${pointsDiff.toFixed(1)} bodů. Proč tu vůbec seš? 🤦`,
-        `${userAhead.name} tě vede o ${pointsDiff.toFixed(1)} bodů. Tvoje účast je akorát pro statistiku 📊`,
-        `${pointsDiff.toFixed(1)} bodů za ${userAhead.name}... To nedoháníš ani kdybys měl raketu v prdeli 🚀`,
-        `${userAhead.name} je o ${pointsDiff.toFixed(1)} bodů lepší. Prostě smířit se s průměrem 🤷`,
-        `${pointsDiff.toFixed(1)} bodů náskok má ${userAhead.name}! Ty jsi prostě línej a tlustej 😴`,
-        `${userAhead.name} tě válcuje o ${pointsDiff.toFixed(1)} bodů! Tvoje fyzička je k smíchu 🤡`
+        `${userAhead.name} je před tebou o ${pointsDiff.toFixed(1)} bodů. Proč tu vůbec seš?`,
+        `${userAhead.name} tě vede o ${pointsDiff.toFixed(1)} bodů. Tvoje účast je akorát pro statistiku`,
+        `${pointsDiff.toFixed(1)} bodů za ${userAhead.name}... To nedoháníš ani kdybys měl raketu v prdeli`,
+        `${userAhead.name} je o ${pointsDiff.toFixed(1)} bodů lepší. Prostě smířit se s průměrem`,
+        `${pointsDiff.toFixed(1)} bodů náskok má ${userAhead.name}! Ty jsi prostě línej a tlustej`,
+        `${userAhead.name} tě válcuje o ${pointsDiff.toFixed(1)} bodů! Tvoje fyzička je k smíchu`
       ]
       messages.push({
         id: 'overtaken-far',
@@ -1520,23 +1522,23 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
   // 2. Jsi poslední
   if (userPosition === leaderboard.length - 1 && leaderboard.length > 1) {
     const messages_last = [
-      'Nebolí tě prdel z toho sudu? 🍺',
-      'Gratuluju, jsi poslední! 💩',
-      'Aspoň že máš jistý sud... 😂',
+      'Nebolí tě prdel z toho sudu?',
+      'Gratuluju, jsi poslední!',
+      'Aspoň že máš jistý sud...',
       'S takovým výkonem doufám, že nám nekoupíš Krakonoše!',
-      'Letos na to dobře sereš! 💩',
-      'Tvoje máma včera večer podávala lepší výkony 😏',
-      'To běháš letos s análním kolíkem v prdeli? 🍑',
-      'Tak si příště loupni ibalgin, ať něco uběhneš, ne? 💊',
-      'Trénuješ na paraolympiádu? ♿',
-      'Tvůj výkon je jako tvoje kariéra - neexistující 🤷',
-      'Už jsi zvažoval jiný koníček? Třeba pletení? 🧶',
-      'S tímhle výkonem nedoběhneš ani k lednici 🍕',
-      'Už si vybral pivo, co budeš kupovat na zapíjení? 🍺',
-      'Tvoje máma běhá rychlejc, když jde nakupovat 🛒',
-      'Tvoje fyzička je jako tvoje šance na výhru - nulová 🚫',
-      'Tvoje máma má lepší čas na 5km a ta váží přes metřák 🏃‍♀️',
-      'Tvoje tělo vypadá jako kdyby se vzdalo dřív než ty 🏳️'
+      'Letos na to dobře sereš!',
+      'Tvoje máma včera večer podávala lepší výkony',
+      'To běháš letos s análním kolíkem v prdeli?',
+      'Tak si příště loupni ibalgin, ať něco uběhneš, ne?',
+      'Trénuješ na paraolympiádu?',
+      'Tvůj výkon je jako tvoje kariéra - neexistující',
+      'Už jsi zvažoval jiný koníček? Třeba pletení?',
+      'S tímhle výkonem nedoběhneš ani k lednici',
+      'Už si vybral pivo, co budeš kupovat na zapíjení?',
+      'Tvoje máma běhá rychlejc, když jde nakupovat',
+      'Tvoje fyzička je jako tvoje šance na výhru - nulová',
+      'Tvoje máma má lepší čas na 5km a ta váží přes metřák',
+      'Tvoje tělo vypadá jako kdyby se vzdalo dřív než ty'
     ]
     messages.push({
       id: 'last-place',
@@ -1550,19 +1552,19 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
   // 3. Máš 3+ dny bez aktivity
   if (consistency.longestGap >= 3) {
     const gapMessages = [
-      `Už ${consistency.longestGap} dní nic... Chcípnul si ty mrdko? 💀`,
-      `${consistency.longestGap} dní pauza? To se ses asi fakt dobře najedl! 🐷`,
-      `${consistency.longestGap} dní... Netflix a chill? Za takovej výkon ti ho stará nevykouří, ani když jí pustíš Emily in Paris 🍆`,
-      `${consistency.longestGap} dní bez aktivity? Tvoje boty už mají plíseň! 🦠`,
-      `${consistency.longestGap} dní nicnedělání? Tvoje kondice je na úrovni důchodce po mrtvici 👴`,
-      `${consistency.longestGap} dní líný jak prase... Aspoň že máš čas na chlast 🍺`,
-      `${consistency.longestGap} dní pauza? Tvoje máma by se styděla, kdyby nebyla zvyklá 😔`,
-      `${consistency.longestGap} dní bez pohybu? Jediný co se hýbe je tvoje tlama narvaná žrádlem 👄`,
+      `Už ${consistency.longestGap} dní nic... Chcípnul si ty mrdko?`,
+      `${consistency.longestGap} dní pauza? To se ses asi fakt dobře najedl!`,
+      `${consistency.longestGap} dní... Netflix a chill? Za takovej výkon ti ho stará nevykouří, ani když jí pustíš Emily in Paris`,
+      `${consistency.longestGap} dní bez aktivity? Tvoje boty už mají plíseň!`,
+      `${consistency.longestGap} dní nicnedělání? Tvoje kondice je na úrovni důchodce po mrtvici`,
+      `${consistency.longestGap} dní líný jak prase... Aspoň že máš čas na chlast`,
+      `${consistency.longestGap} dní pauza? Tvoje máma by se styděla, kdyby nebyla zvyklá`,
+      `${consistency.longestGap} dní bez pohybu? Jediný co se hýbe je tvoje tlama narvaná žrádlem`,
       `${consistency.longestGap} dní nicnedělání? Tvoje motivace nějak zmizela ty bečko sádla`,
       `${consistency.longestGap} dní líný jak kokot... Doufám, že sis aspoň dokurvil koleno`,
       `${consistency.longestGap} dní na to sereš, tebe stačí už jenom trefit jateční pistolí`,
       `${consistency.longestGap} sluníčkových dní, tebe by letos natřela i moje jednonohá 9 let mrtvá bába`,
-      `${consistency.longestGap} dní pauza? Snad ses aspoň dobře nažral 🐷`
+      `${consistency.longestGap} dní pauza? Snad ses aspoň dobře nažral`
     ]
     messages.push({
       id: 'inactive',
@@ -1577,17 +1579,17 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
   const recentDrinking = activities.slice(0, 3).filter(a => !a.no_alcohol)
   if (recentDrinking.length > 0) {
     const drinkingMessages = [
-      `${userName} zase chlastat, klasika 🍺`,
-      `Takže pivo ano, běhání ne? Dobrá strategie pro mrdku jako ${userName}! 🤦`,
-      `${userName} má jasně nastavený priority: 🍺 > 🏃`,
+      `${userName} zase chlastat, klasika`,
+      `Takže pivo ano, běhání ne? Dobrá strategie pro mrdku jako ${userName}!`,
+      `${userName} má jasně nastavený priority: pivo > běhání`,
       `Vidím že ${userName} chlastá, místo aby zvedl prdel ze židle`,
-      `Chlast je tvoje jediná disciplína, kde máš konzistentní výkon 🍻`,
-      `S takhle oteklým obličejem bych taky radši nešel běhat 🥴`,
+      `Chlast je tvoje jediná disciplína, kde máš konzistentní výkon`,
+      `S takhle oteklým obličejem bych taky radši nešel běhat`,
       `kdyby se mohly zapisovat vypité metry piv, tak si stejně ve sračkách`,
-      `${userName} běhá jen když mu dochází pivo v lednici 🍺`,
-      `Tvoje máma pije míň a má lepší fyzičku 🍻`,
-      `Chlastáš jak prasátko a vypadáš taky tak 🐷`,
-      `${userName} má víc piv v břiše než kilometrů na kontě 🍺`,
+      `${userName} běhá jen když mu dochází pivo v lednici`,
+      `Tvoje máma pije míň a má lepší fyzičku`,
+      `Chlastáš jak prasátko a vypadáš taky tak`,
+      `${userName} má víc piv v břiše než kilometrů na kontě`,
       `Kdybys dal tolik energie do běhání jako do chlastání... stejně by to nestačilo`
     ]
     messages.push({
@@ -1602,13 +1604,13 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
   // 5. Jsi první - motivace
   if (userPosition === 0 && leaderboard.length > 1) {
     const leadMessages = [
-      '👑 Král kokotů!',
-      '🏆 Jsi první, to tvoje kolena nemůžou vydržet!',
-      '💪 Solidní výkon! Teď to neposrat...',
-      '🥇 Gratuluju! Konečně ses k něčemu dopracoval v životě',
-      '👏 Tak to seš dobrej vymrdanec',
-      '🔥 První místo! Hlavně to neposer',
-      '⚡ Jsi nahoře! Aspoň jednou v životě...'
+      'Král kokotů!',
+      'Jsi první, to tvoje kolena nemůžou vydržet!',
+      'Solidní výkon! Teď to neposrat...',
+      'Gratuluju! Konečně ses k něčemu dopracoval v životě',
+      'Tak to seš dobrej vymrdanec',
+      'První místo! Hlavně to neposer',
+      'Jsi nahoře! Aspoň jednou v životě...'
     ]
     messages.push({
       id: 'first-place',
@@ -1622,13 +1624,13 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
   // 6. Máš pod 50% aktivních dní
   if (consistency.activeDaysPercent < 50) {
     const lazyMessages = [
-      `Jen ${consistency.activeDaysPercent.toFixed(0)}% aktivních dní? Ty seš fakt línej kokot! 😴`,
-      `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní... Tvůj gauč má větší opotřebení než boty 🛋️`,
-      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? To je víc času na Pornhubu než na běhání 🔞`,
+      `Jen ${consistency.activeDaysPercent.toFixed(0)}% aktivních dní? Ty seš fakt línej kokot!`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní... Tvůj gauč má větší opotřebení než boty`,
+      `${consistency.activeDaysPercent.toFixed(0)}% aktivita? To je víc času na Pornhubu než na běhání`,
       `${consistency.activeDaysPercent.toFixed(0)}% konzistence? Hlavně že furt nacházíš výmluvy, proč nejít`,
       `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Zapni si ty hodinky, aspoň když jdeš do večerky pro další chlast`,
-      `${consistency.activeDaysPercent.toFixed(0)}% dní? S tím břichem to ani jinak nejde, co? 🫃`,
-      `${consistency.activeDaysPercent.toFixed(0)}% konzistence! Tvoje fyzička vypadá jako tvoje snaha - nulová 💪`,
+      `${consistency.activeDaysPercent.toFixed(0)}% dní? S tím břichem to ani jinak nejde, co?`,
+      `${consistency.activeDaysPercent.toFixed(0)}% konzistence! Tvoje fyzička vypadá jako tvoje snaha - nulová`,
       `${consistency.activeDaysPercent.toFixed(0)}% aktivních dní! Jediný co roste je tvoje ztráta`,
       `${consistency.activeDaysPercent.toFixed(0)}% aktivita? Víc pohybu máš i ve spánku. Nechej si schválně jednou běžet záznam přes noc`
     ]
