@@ -1136,7 +1136,7 @@ export default function Page() {
                 {(achievements.weeklyBadges.mrdkaTydne.userName || achievements.weeklyBadges.alkacTydne.length > 0 || achievements.weeklyBadges.abstinentTydne.length > 0 || achievements.weeklyBadges.comebackTydne.userName) && (
                   <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🏅 Týdenní (ne)ocenění</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
                       {achievements.weeklyBadges.comebackTydne.userName && (
                         <div style={{
                           padding: '1rem',
