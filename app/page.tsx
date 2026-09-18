@@ -38,9 +38,11 @@ export default function Page() {
   const [kolo, setKolo] = useState('0')
   const [bazen, setBasen] = useState('0')
   const [kokotmetr, setKokotmetr] = useState('0')
+  const [weight, setWeight] = useState('')
+  const [pushups, setPushups] = useState(false)
   const [activities, setActivities] = useState<(Activity & { user_name: string })[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editValues, setEditValues] = useState({ beh: '', kolo: '', bazen: '', kokotmetr: '', no_alcohol: false })
+  const [editValues, setEditValues] = useState({ beh: '', kolo: '', bazen: '', kokotmetr: '', no_alcohol: false, weight: '', pushups: false })
   const [filterUserId, setFilterUserId] = useState<string>('all')
   const [pointsHistory, setPointsHistory] = useState<PointsHistory[]>([])
   const [settingsPassword, setSettingsPassword] = useState('')
@@ -306,7 +308,9 @@ export default function Page() {
       kolo: parseFloat(kolo) || 0,
       bazen: parseFloat(bazen) || 0,
       kokotmetr: parseInt(kokotmetr) || 0,
-      no_alcohol: alcoholFree
+      no_alcohol: alcoholFree,
+      weight: weight ? parseFloat(weight) : null,
+      pushups: pushups
     }
     console.log('Submitting activity:', activityData)
     const result = await addActivity(activityData, sunnyDay)
@@ -321,6 +325,8 @@ export default function Page() {
       setBasen('0')
       setKokotmetr('0')
       setAlcoholFree(false)
+      setWeight('')
+      setPushups(false)
 
       // Obnovit data
       const [newLeaderboard, newActivities, newHistory, newTrashTalk] = await Promise.all([
@@ -373,7 +379,9 @@ export default function Page() {
       kolo: activity.kolo.toString(),
       bazen: activity.bazen.toString(),
       kokotmetr: activity.kokotmetr.toString(),
-      no_alcohol: activity.no_alcohol
+      no_alcohol: activity.no_alcohol,
+      weight: activity.weight ? activity.weight.toString() : '',
+      pushups: activity.pushups
     })
   }
 
@@ -386,7 +394,9 @@ export default function Page() {
       kolo: parseFloat(editValues.kolo),
       bazen: parseFloat(editValues.bazen),
       kokotmetr: parseInt(editValues.kokotmetr),
-      no_alcohol: editValues.no_alcohol
+      no_alcohol: editValues.no_alcohol,
+      weight: editValues.weight ? parseFloat(editValues.weight) : null,
+      pushups: editValues.pushups
     }, sunnyDay)
 
     if (result) {
@@ -676,11 +686,35 @@ export default function Page() {
                 </div>
               </label>
             </div>
-            <button className={`sober-toggle ${alcoholFree ? 'selected' : ''}`} onClick={() => setAlcoholFree(!alcoholFree)} aria-pressed={alcoholFree}>
-              <span className="check-box">{alcoholFree && <Check />}</span>
-              <span><strong>Den bez alkoholu</strong><small>Počítá se do celkového skóre</small></span>
-              <ShieldCheck />
-            </button>
+            <div className="field-row">
+              <label>
+                <span>VÁHA</span>
+                <div className="input-wrap">
+                  <input
+                    type="number"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                    placeholder="80.5"
+                    aria-label="Váha"
+                    min="0"
+                    step="0.1"
+                  />
+                  <b>kg</b>
+                </div>
+              </label>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+              <button className={`sober-toggle ${alcoholFree ? 'selected' : ''}`} onClick={() => setAlcoholFree(!alcoholFree)} aria-pressed={alcoholFree}>
+                <span className="check-box">{alcoholFree && <Check />}</span>
+                <span><strong>Den bez alkoholu</strong><small>Počítá se do celkového skóre</small></span>
+              </button>
+
+              <button className={`sober-toggle ${pushups ? 'selected' : ''}`} onClick={() => setPushups(!pushups)} aria-pressed={pushups}>
+                <span className="check-box">{pushups && <Check />}</span>
+                <span><strong>40 angličáků</strong><small>Pro odznáček SAS</small></span>
+              </button>
+            </div>
             <button className="submit-button" onClick={handleSubmit} disabled={!selectedUserId || loading}>
               {submitted ? <><Check /> Zapsáno!</> : <><Plus /> Zapsat aktivitu</>}
             </button>
@@ -777,7 +811,9 @@ export default function Page() {
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>kolo</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>bazén</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>kokotm</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>váha</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600 }}>🚫🍺</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600 }}>💪</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Akce</th>
                   </tr>
                 </thead>
@@ -845,6 +881,19 @@ export default function Page() {
                           />
                         ) : activity.kokotmetr}
                       </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        {editingId === activity.id ? (
+                          <input
+                            type="number"
+                            value={editValues.weight}
+                            onChange={(e) => setEditValues({...editValues, weight: e.target.value})}
+                            style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
+                            min="0"
+                            step="0.1"
+                            placeholder="-"
+                          />
+                        ) : (activity.weight || '—')}
+                      </td>
                       <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                         {editingId === activity.id ? (
                           <input
@@ -853,6 +902,15 @@ export default function Page() {
                             onChange={(e) => setEditValues({...editValues, no_alcohol: e.target.checked})}
                           />
                         ) : (activity.no_alcohol ? '✓' : '—')}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        {editingId === activity.id ? (
+                          <input
+                            type="checkbox"
+                            checked={editValues.pushups}
+                            onChange={(e) => setEditValues({...editValues, pushups: e.target.checked})}
+                          />
+                        ) : (activity.pushups ? '✓' : '—')}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {editingId === activity.id ? (

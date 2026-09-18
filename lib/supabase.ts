@@ -25,6 +25,8 @@ export type Activity = {
   bazen: number
   kokotmetr: number
   no_alcohol: boolean
+  weight: number | null
+  pushups: boolean
   created_at: string
   updated_at: string
 }
@@ -177,6 +179,8 @@ export async function addActivity(activity: {
   bazen: number
   kokotmetr: number
   no_alcohol: boolean
+  weight?: number | null
+  pushups?: boolean
 }, sunnyDay?: string): Promise<Activity | null> {
   let finalActivity = { ...activity }
 
@@ -239,6 +243,8 @@ export async function updateActivity(
     bazen?: number
     kokotmetr?: number
     no_alcohol?: boolean
+    weight?: number | null
+    pushups?: boolean
   },
   sunnyDay?: string
 ): Promise<Activity | null> {
@@ -1225,6 +1231,76 @@ export async function getAchievements(userId: string, startDate?: string, endDat
     emoji: '💪',
     type: 'achievement',
     unlocked: totalPoints >= 400
+  })
+
+  // 💉 Ozempic - Zhubnul více než 5 kg během výzvy
+  let weightQuery = supabase
+    .from('activities')
+    .select('weight, date')
+    .eq('user_id', userId)
+    .not('weight', 'is', null)
+    .order('date', { ascending: true })
+
+  if (startDate) weightQuery = weightQuery.gte('date', startDate)
+  if (endDate) weightQuery = weightQuery.lte('date', endDate)
+
+  const { data: weightData } = await weightQuery
+  const firstWeight = weightData?.[0]?.weight
+  const lastWeight = weightData?.[weightData.length - 1]?.weight
+  const weightLoss = firstWeight && lastWeight ? firstWeight - lastWeight : 0
+
+  console.log('Ozempic debug:', { weightData, firstWeight, lastWeight, weightLoss, unlocked: weightLoss >= 5 })
+
+  badges.push({
+    id: 'ozempic',
+    name: 'Ozempic',
+    description: 'Zhubnul více než 5 kg',
+    emoji: '💉',
+    type: 'achievement',
+    unlocked: weightLoss >= 5
+  })
+
+  // 🎖️ SAS - 40 dní v řadě s anglickými (aktuální streak)
+  let pushupsQuery = supabase
+    .from('activities')
+    .select('pushups, date')
+    .eq('user_id', userId)
+    .order('date', { ascending: true })
+
+  if (startDate) pushupsQuery = pushupsQuery.gte('date', startDate)
+  if (endDate) pushupsQuery = pushupsQuery.lte('date', endDate)
+
+  const { data: pushupsData } = await pushupsQuery
+
+  // Počítáme aktuální streak angliček (musí být každý den bez mezery)
+  let currentPushupsStreak = 0
+
+  if (pushupsData && pushupsData.length > 0) {
+    // Počítáme zpětně od dneška
+    const today = new Date()
+    let checkDate = new Date(today)
+
+    // Pro každý den zpětně kontrolujeme, jestli má anglické
+    for (let i = 0; i < pushupsData.length; i++) {
+      const activityDate = checkDate.toISOString().split('T')[0]
+      const dayActivity = pushupsData.find(a => a.date === activityDate)
+
+      if (dayActivity && dayActivity.pushups) {
+        currentPushupsStreak++
+        checkDate.setDate(checkDate.getDate() - 1)
+      } else {
+        break // Pokud jeden den chybí nebo nemá anglické, končíme
+      }
+    }
+  }
+
+  badges.push({
+    id: 'sas',
+    name: 'SAS',
+    description: 'Angličáky 40 dní v řadě',
+    emoji: '🎖️',
+    type: 'achievement',
+    unlocked: currentPushupsStreak >= 40
   })
 
   // Týdenní badges - počítáme z posledního týdne
