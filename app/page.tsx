@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction } from '@/lib/supabase'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, getWeightStats, getPushupsLeaderboard, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction } from '@/lib/supabase'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, PieChart, Pie, Cell } from 'recharts'
 
 export default function Page() {
@@ -68,8 +68,13 @@ export default function Page() {
   const [motivationMessage, setMotivationMessage] = useState<string>('')
   const [yearPrediction, setYearPrediction] = useState<YearPrediction | null>(null)
   const [historicalPredictions, setHistoricalPredictions] = useState<HistoricalPrediction[]>([])
+  const [weightStats, setWeightStats] = useState<{firstWeight: number, currentWeight: number, goalWeight: number, remaining: number, weightLoss: number, hasReachedGoal: boolean} | null>(null)
+  const [pushupsLeaderboard, setPushupsLeaderboard] = useState<Array<{userId: string, userName: string, currentStreak: number}>>([])
   const [excuse, setExcuse] = useState<string>('')
   const [generatingExcuse, setGeneratingExcuse] = useState(false)
+  const [isAddingNewEntry, setIsAddingNewEntry] = useState(false)
+  const [newEntryDate, setNewEntryDate] = useState('')
+  const [newEntryValues, setNewEntryValues] = useState({ beh: '', kolo: '', bazen: '', kokotmetr: '', no_alcohol: false, weight: '', pushups: false })
   const entryFormRef = useRef<HTMLElement>(null)
 
   const CORRECT_PASSWORD = 'Vymrdanec2026*'
@@ -237,6 +242,14 @@ export default function Page() {
         const currentParticipantNames = users.map(u => u.name)
         const historicalPreds = await getHistoricalPredictions(currentParticipantNames, challengeStart, challengeEnd)
         setHistoricalPredictions(historicalPreds)
+
+        // Load weight stats
+        const weightData = await getWeightStats(statsUserId, challengeStart, challengeEnd)
+        setWeightStats(weightData)
+
+        // Load pushups leaderboard
+        const pushupsData = await getPushupsLeaderboard(challengeStart, challengeEnd)
+        setPushupsLeaderboard(pushupsData)
       }
     }
     loadStats()
@@ -383,6 +396,37 @@ export default function Page() {
       weight: activity.weight ? activity.weight.toString() : '',
       pushups: activity.pushups
     })
+  }
+
+  // Funkce pro uložení nového záznamu
+  async function saveNewEntry() {
+    if (!isAuthenticated || !filterUserId || filterUserId === 'all' || !newEntryDate) return
+
+    const result = await addActivity({
+      user_id: filterUserId,
+      date: newEntryDate,
+      beh: parseFloat(newEntryValues.beh) || 0,
+      kolo: parseFloat(newEntryValues.kolo) || 0,
+      bazen: parseFloat(newEntryValues.bazen) || 0,
+      kokotmetr: parseInt(newEntryValues.kokotmetr) || 0,
+      no_alcohol: newEntryValues.no_alcohol,
+      weight: newEntryValues.weight ? parseFloat(newEntryValues.weight) : null,
+      pushups: newEntryValues.pushups
+    }, sunnyDay)
+
+    if (result) {
+      setIsAddingNewEntry(false)
+      setNewEntryDate('')
+      setNewEntryValues({ beh: '', kolo: '', bazen: '', kokotmetr: '', no_alcohol: false, weight: '', pushups: false })
+      const [newLeaderboard, newActivities, newHistory] = await Promise.all([
+        getLeaderboard(challengeStart, challengeEnd, sunnyDay),
+        getAllActivities(),
+        getPointsHistory(challengeStart, challengeEnd)
+      ])
+      setLeaderboard(newLeaderboard)
+      setActivities(newActivities)
+      setPointsHistory(newHistory)
+    }
   }
 
   // Funkce pro uložení úpravy
@@ -757,7 +801,10 @@ export default function Page() {
                   <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', color: '#888' }}>FILTR KOKOTA</span>
                   <select
                     value={filterUserId}
-                    onChange={(e) => setFilterUserId(e.target.value)}
+                    onChange={(e) => {
+                      setFilterUserId(e.target.value)
+                      setIsAddingNewEntry(false)
+                    }}
                     style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #333', background: '#000', color: '#fff', fontSize: '1rem' }}
                   >
                     <option value="all">Všichni kokoti</option>
@@ -767,6 +814,33 @@ export default function Page() {
                   </select>
                 </label>
               </div>
+
+              {/* Tlačítko pro přidání nového záznamu */}
+              {filterUserId !== 'all' && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <button
+                    onClick={() => {
+                      setIsAddingNewEntry(!isAddingNewEntry)
+                      setNewEntryDate('')
+                      setNewEntryValues({ beh: '', kolo: '', bazen: '', kokotmetr: '', no_alcohol: false, weight: '', pushups: false })
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      border: '2px solid #10b981',
+                      background: isAddingNewEntry ? '#10b981' : 'transparent',
+                      color: isAddingNewEntry ? '#fff' : '#10b981',
+                      fontSize: '0.875rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {isAddingNewEntry ? '✕ Zrušit přidání' : '+ Přidat nový záznam'}
+                  </button>
+                </div>
+              )}
 
               {/* Celkové výsledky */}
               <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem', color: 'white' }}>
@@ -935,6 +1009,113 @@ export default function Page() {
                       </td>
                     </tr>
                   ))}
+
+                  {/* Řádek pro přidání nového záznamu */}
+                  {isAddingNewEntry && (
+                    <tr style={{ borderBottom: '2px solid #10b981', background: '#0a2818' }}>
+                      <td style={{ padding: '0.75rem' }}>
+                        <input
+                          type="date"
+                          value={newEntryDate}
+                          onChange={(e) => setNewEntryDate(e.target.value)}
+                          min={challengeStart}
+                          max={challengeEnd}
+                          style={{ width: '100%', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
+                        />
+                      </td>
+                      <td style={{ padding: '0.75rem' }}>
+                        {users.find(u => u.id === filterUserId)?.name || ''}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        <input
+                          type="number"
+                          value={newEntryValues.beh}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val === '' || parseFloat(val) >= 0) setNewEntryValues({...newEntryValues, beh: val})
+                          }}
+                          style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
+                          min="0"
+                          step="0.1"
+                          placeholder="0"
+                        />
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        <input
+                          type="number"
+                          value={newEntryValues.kolo}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val === '' || parseFloat(val) >= 0) setNewEntryValues({...newEntryValues, kolo: val})
+                          }}
+                          style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
+                          min="0"
+                          step="0.1"
+                          placeholder="0"
+                        />
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        <input
+                          type="number"
+                          value={newEntryValues.bazen}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val === '' || parseFloat(val) >= 0) setNewEntryValues({...newEntryValues, bazen: val})
+                          }}
+                          style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
+                          min="0"
+                          step="0.1"
+                          placeholder="0"
+                        />
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        <input
+                          type="number"
+                          value={newEntryValues.kokotmetr}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val === '' || parseInt(val) >= 0) setNewEntryValues({...newEntryValues, kokotmetr: val})
+                          }}
+                          style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
+                          min="0"
+                          placeholder="0"
+                        />
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        <input
+                          type="number"
+                          value={newEntryValues.weight}
+                          onChange={(e) => setNewEntryValues({...newEntryValues, weight: e.target.value})}
+                          style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
+                          min="0"
+                          step="0.1"
+                          placeholder="-"
+                        />
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={newEntryValues.no_alcohol}
+                          onChange={(e) => setNewEntryValues({...newEntryValues, no_alcohol: e.target.checked})}
+                        />
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={newEntryValues.pushups}
+                          onChange={(e) => setNewEntryValues({...newEntryValues, pushups: e.target.checked})}
+                        />
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        <button onClick={saveNewEntry} style={{ padding: '0.25rem 0.5rem', marginRight: '0.5rem', background: '#10b981', border: 'none', borderRadius: '4px', color: '#fff', cursor: 'pointer' }}>
+                          <Check size={16} />
+                        </button>
+                        <button onClick={() => setIsAddingNewEntry(false)} style={{ padding: '0.25rem 0.5rem', background: '#666', border: 'none', borderRadius: '4px', color: '#fff', cursor: 'pointer' }}>
+                          <X size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1759,6 +1940,66 @@ export default function Page() {
                           </div>
                           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
                             Účast: {pred.participationYears} {pred.participationYears === 1 ? 'rok' : pred.participationYears < 5 ? 'roky' : 'let'} | Ø {pred.historicalAverage} | Loni: {pred.lastYearPoints !== null ? pred.lastYearPoints : 'N/A'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Weight Stats */}
+                {weightStats && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>⚖️ Váha</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                      <div style={{ textAlign: 'center', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Počáteční</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#173b29' }}>{weightStats.firstWeight} kg</div>
+                      </div>
+                      <div style={{ textAlign: 'center', padding: '1rem', background: '#f0fdf4', borderRadius: '8px', border: '2px solid #10b981' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#166534', marginBottom: '0.25rem' }}>Současná</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#166534' }}>{weightStats.currentWeight} kg</div>
+                      </div>
+                      <div style={{ textAlign: 'center', padding: '1rem', background: weightStats.hasReachedGoal ? '#f0fdf4' : '#fef2f2', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '0.75rem', color: weightStats.hasReachedGoal ? '#166534' : '#991b1b', marginBottom: '0.25rem' }}>
+                          {weightStats.hasReachedGoal ? 'Cíl dosažen!' : 'Zbývá'}
+                        </div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: weightStats.hasReachedGoal ? '#166534' : '#991b1b' }}>
+                          {weightStats.hasReachedGoal ? '✓' : `${weightStats.remaining.toFixed(1)} kg`}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fffbeb', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.875rem', color: '#92400e' }}>
+                        <strong>Úbytek:</strong> {weightStats.weightLoss.toFixed(1)} kg | <strong>Cíl:</strong> {weightStats.goalWeight} kg
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pushups Leaderboard */}
+                {pushupsLeaderboard.length > 0 && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>💪 Angličáky</h3>
+                    <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}>
+                      Dělat 40 angličáků kvůli nesmyslnýmu odznáčku může fakt jedině kokot.
+                    </p>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {pushupsLeaderboard.map((user) => (
+                        <div key={user.userId} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem',
+                          padding: '0.75rem 1rem',
+                          background: user.userId === statsUserId ? '#f0fdf4' : '#f8fafc',
+                          border: `2px solid ${user.userId === statsUserId ? '#10b981' : '#e3ece4'}`,
+                          borderRadius: '8px'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#173b29' }}>{user.userName}</div>
+                          </div>
+                          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#10b981' }}>
+                            {user.currentStreak} {user.currentStreak === 1 ? 'den' : user.currentStreak < 5 ? 'dny' : 'dní'}
                           </div>
                         </div>
                       ))}

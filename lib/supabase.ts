@@ -1651,6 +1651,104 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
   return messages
 }
 
+// Funkce pro získání statistiky váhy
+export async function getWeightStats(userId: string, startDate?: string, endDate?: string) {
+  let query = supabase
+    .from('activities')
+    .select('weight, date')
+    .eq('user_id', userId)
+    .not('weight', 'is', null)
+    .order('date', { ascending: true })
+
+  if (startDate) query = query.gte('date', startDate)
+  if (endDate) query = query.lte('date', endDate)
+
+  const { data: weightData } = await query
+
+  if (!weightData || weightData.length === 0) {
+    return null
+  }
+
+  const firstWeight = weightData[0].weight
+  const lastWeight = weightData[weightData.length - 1].weight
+  const goalWeight = firstWeight - 5
+  const remaining = lastWeight - goalWeight
+
+  return {
+    firstWeight,
+    currentWeight: lastWeight,
+    goalWeight,
+    remaining: remaining > 0 ? remaining : 0,
+    weightLoss: firstWeight - lastWeight,
+    hasReachedGoal: remaining <= 0
+  }
+}
+
+// Funkce pro získání tabulky angličáků - uživatelé s aktivním streakeem
+export async function getPushupsLeaderboard(startDate?: string, endDate?: string) {
+  // Získat všechny uživatele
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, name')
+
+  if (!users) return []
+
+  const leaderboard: Array<{ userId: string; userName: string; currentStreak: number }> = []
+
+  // Určit od kterého dne počítat - pokud je endDate v minulosti, použij endDate, jinak dneska
+  const today = new Date()
+  const endDateObj = endDate ? new Date(endDate) : today
+  const startCheckDate = endDateObj < today ? endDateObj : today
+
+  // Pro každého uživatele spočítat aktuální streak
+  for (const user of users) {
+    let query = supabase
+      .from('activities')
+      .select('pushups, date')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false })
+
+    if (startDate) query = query.gte('date', startDate)
+    if (endDate) query = query.lte('date', endDate)
+
+    const { data: activities } = await query
+
+    if (!activities || activities.length === 0) continue
+
+    // Počítáme aktuální streak - musí jít od posledního dne výzvy (nebo dneška) zpětně bez mezery
+    let currentStreak = 0
+    let checkDate = new Date(startCheckDate)
+
+    for (let i = 0; i < 100; i++) { // Max 100 dní zpětně
+      const dateStr = checkDate.toISOString().split('T')[0]
+
+      // Pokud jsme mimo rozsah výzvy, přestaň
+      if (startDate && dateStr < startDate) break
+
+      const dayActivity = activities.find(a => a.date === dateStr)
+
+      if (dayActivity && dayActivity.pushups) {
+        currentStreak++
+        checkDate.setDate(checkDate.getDate() - 1)
+      } else {
+        break
+      }
+    }
+
+    // Přidat do leaderboardu jen pokud má aktivní streak
+    if (currentStreak > 0) {
+      leaderboard.push({
+        userId: user.id,
+        userName: user.name,
+        currentStreak
+      })
+    }
+  }
+
+  // Seřadit podle streaku sestupně
+  return leaderboard.sort((a, b) => b.currentStreak - a.currentStreak)
+}
+
 // Funkce pro načtení globálních nastavení
 export async function getSettings(): Promise<AppSettings | null> {
   const { data, error } = await supabase

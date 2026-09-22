@@ -1,0 +1,60 @@
+2020
+Vojta	385.27
+Mára	345.02
+Rajny	334.11
+Rejža	329.53
+Drogi	287.81
+
+2021
+Majkl	368.91
+Rejža	339.02
+Mára	337.84
+Rajny	315.34
+Vojta	252.57
+Drogi	212.09
+Peli	187
+Karel	187
+Fery	68.7
+
+2022
+Vojta	330.26
+Rejža	288.06
+Karel	263.85
+Drogi	244.86
+Mára	200
+Rajny	141.31
+Fery	122.91
+
+2023
+Vojta	328.59
+Rejža	277.05
+Majkl	240.34
+Drogi	216.79
+Náhlo	195.04
+Mára	172.89
+Karel	156.76
+Rajny	127.11
+
+2024
+Míra	400
+Rajny	341.26
+Vojta	321.65
+Mára	277.36
+Rejža	265.34
+Adam	250.06
+Kafkič	201.84
+Matýso	181.75
+Drogi	179.76
+Lukyyy	178.4
+Karel	139.48
+
+2025
+Míra	284.76
+Rejža	263.99
+Vojta	260.17
+Rajny	259.48
+Adam	213.92
+Kafkič	202.2
+Mára	169.66
+Drogi	165.62
+Karel	64.42

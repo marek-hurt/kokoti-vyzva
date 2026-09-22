@@ -7,7 +7,9 @@
       "Bash(git push)",
       "Bash(tasklist)",
       "Bash(npm run dev -- -p 3001)",
-      "Bash(rm -rf .next)"
+      "Bash(rm -rf .next)",
+      "Bash(findstr node.exe)",
+      "Bash(taskkill //F //PID 19800)"
     ],
     "deny": [],
     "ask": []
