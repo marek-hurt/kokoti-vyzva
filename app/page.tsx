@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, getWeightStats, getPushupsLeaderboard, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction } from '@/lib/supabase'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, getWeightStats, getPushupsLeaderboard, signInWithSharedPassword, hasValidSession, signOut, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction } from '@/lib/supabase'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, PieChart, Pie, Cell } from 'recharts'
 
 export default function Page() {
@@ -53,6 +53,8 @@ export default function Page() {
   const [globalPassword, setGlobalPassword] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [showLoginScreen, setShowLoginScreen] = useState(true)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [statsUserId, setStatsUserId] = useState<string>('')
   const [userStreaks, setUserStreaks] = useState<UserStreaks | null>(null)
   const [pointsBreakdown, setPointsBreakdown] = useState<PointsBreakdown | null>(null)
@@ -77,10 +79,22 @@ export default function Page() {
   const [newEntryValues, setNewEntryValues] = useState({ beh: '', kolo: '', bazen: '', kokotmetr: '', no_alcohol: false, weight: '', pushups: false })
   const entryFormRef = useRef<HTMLElement>(null)
 
-  const CORRECT_PASSWORD = 'Vymrdanec2026*'
-
-  // Načíst nastavení výzvy z databáze a heslo z localStorage
+  // Obnovit relaci ze Supabase Auth. Heslo už není v bundlu – drží ho databáze.
   useEffect(() => {
+    async function restoreSession() {
+      if (await hasValidSession()) {
+        setIsAuthenticated(true)
+        setShowLoginScreen(false)
+      }
+      setAuthChecked(true)
+    }
+    restoreSession()
+  }, [])
+
+  // Nastavení výzvy jde načíst až po přihlášení – RLS pustí jen authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return
+
     async function loadSettings() {
       const settings = await getSettings()
       if (settings) {
@@ -90,18 +104,15 @@ export default function Page() {
       }
     }
     loadSettings()
-
-    const savedPassword = localStorage.getItem('globalPassword')
-    if (savedPassword === CORRECT_PASSWORD) {
-      setIsAuthenticated(true)
-      setShowLoginScreen(false)
-    }
-  }, [])
+  }, [isAuthenticated])
 
   // Funkce pro přihlášení
-  function handleLogin() {
-    if (globalPassword === CORRECT_PASSWORD) {
-      localStorage.setItem('globalPassword', globalPassword)
+  async function handleLogin() {
+    setIsLoggingIn(true)
+    const success = await signInWithSharedPassword(globalPassword)
+    setIsLoggingIn(false)
+
+    if (success) {
       setIsAuthenticated(true)
       setShowLoginScreen(false)
     } else {
@@ -147,6 +158,8 @@ export default function Page() {
 
   // Načíst data z databáze
   useEffect(() => {
+    if (!isAuthenticated) return
+
     async function fetchData() {
       setLoading(true)
       const [leaderboardData, usersData, activitiesData, historyData] = await Promise.all([
@@ -184,7 +197,7 @@ export default function Page() {
       setLoading(false)
     }
     fetchData()
-  }, [challengeStart, challengeEnd, sunnyDay])
+  }, [challengeStart, challengeEnd, sunnyDay, isAuthenticated])
 
   // Uložit vybraného uživatele do localStorage a URL při změně
   useEffect(() => {
@@ -458,6 +471,11 @@ export default function Page() {
 
   const selectedUser = users.find(u => u.id === selectedUserId)
 
+  // Dokud neznáme stav relace, nevykreslovat nic – jinak problikne login
+  if (!authChecked) {
+    return <main className="app-shell" />
+  }
+
   // Login obrazovka
   if (showLoginScreen) {
     return (
@@ -497,6 +515,7 @@ export default function Page() {
 
             <button
               onClick={handleLogin}
+              disabled={isLoggingIn}
               style={{
                 width: '100%',
                 padding: '0.75rem 1.5rem',
@@ -506,11 +525,12 @@ export default function Page() {
                 color: '#fff',
                 fontSize: '1rem',
                 fontWeight: 600,
-                cursor: 'pointer',
+                cursor: isLoggingIn ? 'wait' : 'pointer',
+                opacity: isLoggingIn ? 0.7 : 1,
                 boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
               }}
             >
-              Přihlásit se
+              {isLoggingIn ? 'Přihlašuji…' : 'Přihlásit se'}
             </button>
           </div>
         </div>

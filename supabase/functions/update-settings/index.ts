@@ -1,73 +1,74 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const ADMIN_PASSWORD = 'Vymrdanec2026*'
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function json(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
 
 Deno.serve(async (req) => {
-  // Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { password, updates } = await req.json()
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    // Ověřit heslo
-    if (password !== ADMIN_PASSWORD) {
-      return new Response(
-        JSON.stringify({ error: 'Nesprávné heslo' }),
-        {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
-        }
-      )
+    // Ověřit, že volající má platnou relaci z přihlášení do aplikace.
+    // Samotný anon key sem nestačí - ten zná kdokoliv z JS bundlu.
+    const authHeader = req.headers.get('Authorization') ?? ''
+    const token = authHeader.replace('Bearer ', '').trim()
+
+    if (!token || token === anonKey) {
+      return json({ error: 'Nejsi přihlášený' }, 401)
     }
 
-    // Vytvořit Supabase klienta s service role (má plný přístup)
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const authClient = createClient(supabaseUrl, anonKey)
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token)
 
-    // Aktualizovat settings
-    const { data, error } = await supabase
+    if (authError || !user) {
+      return json({ error: 'Neplatná nebo vypršená relace' }, 401)
+    }
+
+    const { updates } = await req.json()
+
+    if (!updates || typeof updates !== 'object') {
+      return json({ error: 'Chybí updates' }, 400)
+    }
+
+    // Pustit dál jen sloupce, které nastavení opravdu má
+    const allowed = ['challenge_start', 'challenge_end', 'sunny_day']
+    const payload: Record<string, unknown> = {}
+    for (const key of allowed) {
+      if (key in updates) payload[key] = updates[key]
+    }
+
+    if (Object.keys(payload).length === 0) {
+      return json({ error: 'Žádná povolená pole k úpravě' }, 400)
+    }
+
+    // Zápis přes service role (settings nemají write politiku pro authenticated)
+    const admin = createClient(supabaseUrl, serviceKey)
+    const { data, error } = await admin
       .from('settings')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...payload, updated_at: new Date().toISOString() })
       .eq('id', 'global')
       .select()
       .single()
 
-    if (error) {
-      throw error
-    }
+    if (error) throw error
 
-    return new Response(
-      JSON.stringify({ data }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        }
-      }
-    )
+    return json({ data }, 200)
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        }
-      }
-    )
+    return json({ error: (error as Error).message }, 500)
   }
 })

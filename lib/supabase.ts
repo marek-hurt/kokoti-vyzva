@@ -5,6 +5,37 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// --- Přihlášení ---------------------------------------------------------
+// Výzva má jeden sdílený účet. Heslo ověřuje Supabase Auth (tedy server),
+// ne porovnání stringu v prohlížeči. Díky tomu RLS pozná přihlášeného
+// klienta a anon key sám o sobě nikomu nic neodemkne.
+// Tenhle e-mail musí přesně odpovídat uživateli založenému v Supabase
+// Dashboard → Authentication → Users. Žádná pošta na něj nechodí.
+const SHARED_ACCOUNT_EMAIL = 'vyzva@kokoti-vyzva.cz'
+
+export async function signInWithSharedPassword(password: string): Promise<boolean> {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: SHARED_ACCOUNT_EMAIL,
+    password,
+  })
+
+  if (error) {
+    console.error('Přihlášení selhalo:', error.message)
+    return false
+  }
+
+  return true
+}
+
+export async function hasValidSession(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession()
+  return data.session !== null
+}
+
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut()
+}
+
 // Typy pro databázi
 export type User = {
   id: string
@@ -1774,11 +1805,12 @@ export async function updateSettings(updates: {
   sunny_day?: string | null
 }): Promise<AppSettings | null> {
   try {
-    // Získat heslo z localStorage
-    const password = localStorage.getItem('globalPassword')
+    // Vzít access token z aktuální relace. Edge funkce si podle něj ověří,
+    // že volající je přihlášený – žádné samostatné heslo už neexistuje.
+    const { data: { session } } = await supabase.auth.getSession()
 
-    if (!password) {
-      console.error('Error updating settings: No password found in localStorage')
+    if (!session) {
+      console.error('Error updating settings: uživatel není přihlášený')
       return null
     }
 
@@ -1787,12 +1819,10 @@ export async function updateSettings(updates: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       },
-      body: JSON.stringify({
-        password,
-        updates
-      })
+      body: JSON.stringify({ updates })
     })
 
     const result = await response.json()
