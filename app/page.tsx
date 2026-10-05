@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, getWeightStats, getPushupsLeaderboard, signInWithSharedPassword, hasValidSession, signOut, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction } from '@/lib/supabase'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, getWeightStats, getPushupsLeaderboard, signInWithSharedPassword, hasValidSession, signOut, parseDatum, dnes, formatDatum, pocetDni, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction } from '@/lib/supabase'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, PieChart, Pie, Cell } from 'recharts'
 
 export default function Page() {
@@ -147,14 +147,18 @@ export default function Page() {
   }
 
   // Výpočet průběhu výzvy
-  const startDate = new Date(challengeStart)
-  const endDate = new Date(challengeEnd)
-  const today = new Date()
-  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-  const daysElapsed = Math.max(0, Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)))
-  const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+  // Dny se pocitaji vcetne obou kraju: 4.10. az 12.11. je 40 dni a druhy den
+  // vyzvy ma daysElapsed = 2. Pocet tydnu se bere z delky vyzvy, driv tu byla
+  // zadratovana sestka, ktera u jinak dlouhe vyzvy nesedela.
+  const startDate = parseDatum(challengeStart)
+  const endDate = parseDatum(challengeEnd)
+  const today = dnes()
+  const totalDays = pocetDni(startDate, endDate)
+  const daysElapsed = today < startDate ? 0 : Math.min(totalDays, pocetDni(startDate, today))
+  const daysRemaining = Math.max(0, totalDays - daysElapsed)
   const percentComplete = Math.min(100, Math.round((daysElapsed / totalDays) * 100))
-  const currentWeek = Math.min(6, Math.ceil(daysElapsed / 7))
+  const totalWeeks = Math.ceil(totalDays / 7)
+  const currentWeek = Math.max(1, Math.min(totalWeeks, Math.ceil(daysElapsed / 7)))
 
   // Načíst data z databáze
   useEffect(() => {
@@ -296,9 +300,8 @@ export default function Page() {
       if (activities.length > 0) {
         const userActivities = activities.filter(a => a.user_id === statsUserId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         if (userActivities.length > 0) {
-          const lastActivity = new Date(userActivities[0].date)
-          const today = new Date()
-          stats.daysSinceLastActivity = Math.floor((today.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
+          const lastActivity = parseDatum(userActivities[0].date)
+          stats.daysSinceLastActivity = Math.max(0, pocetDni(lastActivity, dnes()) - 1)
         }
       }
 
@@ -326,7 +329,7 @@ export default function Page() {
   async function handleSubmit() {
     if (!selectedUserId || !isAuthenticated) return
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = formatDatum(dnes())
     const activityData = {
       user_id: selectedUserId,
       date: today,

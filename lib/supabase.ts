@@ -36,6 +36,36 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut()
 }
 
+// --- Datumy -------------------------------------------------------------
+// Datumy v DB jsou 'YYYY-MM-DD'. new Date('2026-10-04') se parsuje jako UTC
+// midnight, zato new Date() je lokalni cas - michanim obojiho vychazela delka
+// vyzvy o den vetsi. Proto vsude pracujeme s lokalni midnight a formatujeme
+// lokalne.
+
+export function parseDatum(iso: string): Date {
+  const [rok, mesic, den] = iso.split('-').map(Number)
+  return new Date(rok, mesic - 1, den)
+}
+
+export function dnes(): Date {
+  const t = new Date()
+  return new Date(t.getFullYear(), t.getMonth(), t.getDate())
+}
+
+export function formatDatum(d: Date): string {
+  const mesic = String(d.getMonth() + 1).padStart(2, '0')
+  const den = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mesic}-${den}`
+}
+
+// Pocet dni vcetne obou kraju. Drive se tu pouzivalo Math.ceil(rozdil) + 1,
+// coz castecny den zaokrouhlilo nahoru a pak jej pricetlo jeste podruhe -
+// druhy den vyzvy tak vychazel jako tri dny a aktivita 33 % misto 50 %.
+export function pocetDni(od: Date, doData: Date): number {
+  const dni = Math.round((doData.getTime() - od.getTime()) / 86400000)
+  return Math.max(1, dni + 1)
+}
+
 // Typy pro databázi
 export type User = {
   id: string
@@ -502,9 +532,9 @@ export async function getUserStreaks(userId: string, startDate?: string, endDate
   }
 
   // Vytvořit seznam všech dat v rozmezí
-  const start = new Date(startDate || activities[0].date)
-  const end = new Date(endDate || activities[activities.length - 1].date)
-  const today = new Date()
+  const start = parseDatum(startDate || activities[0].date)
+  const end = parseDatum(endDate || activities[activities.length - 1].date)
+  const today = dnes()
 
   // Mapy aktivit podle data
   const activityMap = new Map<string, typeof activities[0]>()
@@ -520,7 +550,7 @@ export async function getUserStreaks(userId: string, startDate?: string, endDate
 
   // Projít všechny dny v rozmezí
   for (let d = new Date(start); d <= end && d <= today; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0]
+    const dateStr = formatDatum(d)
     const activity = activityMap.get(dateStr)
 
     // Počítat sober streak
@@ -545,7 +575,7 @@ export async function getUserStreaks(userId: string, startDate?: string, endDate
 
   // Current streaky jsou pouze pokud končí dnes nebo poslední den období
   const lastDate = end < today ? end : today
-  const lastDateStr = lastDate.toISOString().split('T')[0]
+  const lastDateStr = formatDatum(lastDate)
   const lastActivity = activityMap.get(lastDateStr)
 
   currentSoberStreak = lastActivity?.no_alcohol ? tempSoberStreak : 0
@@ -689,11 +719,11 @@ export async function getDailyAverages(userId: string, startDate?: string, endDa
   }
 
   // Spočítat celkový počet dní v rozmezí
-  const start = new Date(startDate || new Date().toISOString().split('T')[0])
-  const end = new Date(endDate || new Date().toISOString().split('T')[0])
-  const today = new Date()
-  const actualEnd = end < today ? end : today
-  const totalDays = Math.max(1, Math.ceil((actualEnd.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+  const dnesni = dnes()
+  const start = parseDatum(startDate || formatDatum(dnesni))
+  const end = parseDatum(endDate || formatDatum(dnesni))
+  const actualEnd = end < dnesni ? end : dnesni
+  const totalDays = pocetDni(start, actualEnd)
 
   let totalPoints = 0
   let totalBeh = 0
@@ -818,8 +848,8 @@ export async function getWeeklyBreakdown(userId: string, startDate?: string, end
     return []
   }
 
-  const start = new Date(startDate || activities[0].date)
-  const end = new Date(endDate || activities[activities.length - 1].date)
+  const start = parseDatum(startDate || activities[0].date)
+  const end = parseDatum(endDate || activities[activities.length - 1].date)
 
   // Mapy aktivit podle data
   const activityMap = new Map<string, typeof activities[0]>()
@@ -829,7 +859,7 @@ export async function getWeeklyBreakdown(userId: string, startDate?: string, end
   const weeks = new Map<number, WeeklyBreakdown>()
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0]
+    const dateStr = formatDatum(d)
     const weekNumber = Math.floor((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 7)) + 1
 
     if (!weeks.has(weekNumber)) {
@@ -965,12 +995,12 @@ export async function getConsistencyScore(userId: string, startDate?: string, en
     }
   }
 
-  const start = new Date(startDate || activities[0].date)
-  const end = new Date(endDate || activities[activities.length - 1].date)
-  const today = new Date()
-  const actualEnd = end < today ? end : today
+  const dnesni = dnes()
+  const start = parseDatum(startDate || activities[0].date)
+  const end = parseDatum(endDate || activities[activities.length - 1].date)
+  const actualEnd = end < dnesni ? end : dnesni
 
-  const totalDays = Math.max(1, Math.ceil((actualEnd.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+  const totalDays = pocetDni(start, actualEnd)
 
   // Mapy aktivit podle data
   const activityMap = new Map<string, typeof activities[0]>()
@@ -987,7 +1017,7 @@ export async function getConsistencyScore(userId: string, startDate?: string, en
   let gapsCount = 0
 
   for (let d = new Date(start); d <= actualEnd; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0]
+    const dateStr = formatDatum(d)
     const hasActivity = activityMap.has(dateStr)
 
     if (hasActivity) {
@@ -1308,12 +1338,11 @@ export async function getAchievements(userId: string, startDate?: string, endDat
 
   if (pushupsData && pushupsData.length > 0) {
     // Počítáme zpětně od dneška
-    const today = new Date()
-    let checkDate = new Date(today)
+    const checkDate = dnes()
 
     // Pro každý den zpětně kontrolujeme, jestli má anglické
     for (let i = 0; i < pushupsData.length; i++) {
-      const activityDate = checkDate.toISOString().split('T')[0]
+      const activityDate = formatDatum(checkDate)
       const dayActivity = pushupsData.find(a => a.date === activityDate)
 
       if (dayActivity && dayActivity.pushups) {
@@ -1335,11 +1364,11 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   })
 
   // Týdenní badges - počítáme z posledního týdne
-  const now = new Date()
+  const now = dnes()
   const weekAgo = new Date(now)
   weekAgo.setDate(now.getDate() - 7)
-  const weekAgoStr = weekAgo.toISOString().split('T')[0]
-  const nowStr = now.toISOString().split('T')[0]
+  const weekAgoStr = formatDatum(weekAgo)
+  const nowStr = formatDatum(now)
 
   // Načíst data za poslední týden pro všechny uživatele
   const weeklyQuery = supabase
@@ -1416,7 +1445,7 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   // Získat žebříček před týdnem a současný žebříček
   const twoWeeksAgo = new Date(weekAgo)
   twoWeeksAgo.setDate(weekAgo.getDate() - 7)
-  const twoWeeksAgoStr = twoWeeksAgo.toISOString().split('T')[0]
+  const twoWeeksAgoStr = formatDatum(twoWeeksAgo)
 
   const [oldLeaderboard, currentLeaderboard] = await Promise.all([
     getLeaderboard(startDate, weekAgoStr), // Žebříček před týdnem
@@ -1727,8 +1756,8 @@ export async function getPushupsLeaderboard(startDate?: string, endDate?: string
   const leaderboard: Array<{ userId: string; userName: string; currentStreak: number }> = []
 
   // Určit od kterého dne počítat - pokud je endDate v minulosti, použij endDate, jinak dneska
-  const today = new Date()
-  const endDateObj = endDate ? new Date(endDate) : today
+  const today = dnes()
+  const endDateObj = endDate ? parseDatum(endDate) : today
   const startCheckDate = endDateObj < today ? endDateObj : today
 
   // Pro každého uživatele spočítat aktuální streak
@@ -1751,7 +1780,7 @@ export async function getPushupsLeaderboard(startDate?: string, endDate?: string
     let checkDate = new Date(startCheckDate)
 
     for (let i = 0; i < 100; i++) { // Max 100 dní zpětně
-      const dateStr = checkDate.toISOString().split('T')[0]
+      const dateStr = formatDatum(checkDate)
 
       // Pokud jsme mimo rozsah výzvy, přestaň
       if (startDate && dateStr < startDate) break
@@ -1933,11 +1962,11 @@ export async function getYearPrediction(
   }
 
   // Vypočítat % dokončení
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  const now = new Date()
-  const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-  const daysElapsed = Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  const start = parseDatum(startDate)
+  const end = parseDatum(endDate)
+  const dnesni = dnes()
+  const totalDays = pocetDni(start, end)
+  const daysElapsed = dnesni < start ? 0 : Math.min(totalDays, pocetDni(start, dnesni))
   const percentComplete = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100))
 
   // Lineární projekce
@@ -2027,11 +2056,11 @@ export async function getHistoricalPredictions(
   const currentLeaderboard = await getLeaderboard(startDate, endDate)
 
   // Vypočítat % dokončení letošního roku
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  const now = new Date()
-  const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-  const daysElapsed = Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  const start = parseDatum(startDate)
+  const end = parseDatum(endDate)
+  const dnesni = dnes()
+  const totalDays = pocetDni(start, end)
+  const daysElapsed = dnesni < start ? 0 : Math.min(totalDays, pocetDni(start, dnesni))
   const percentComplete = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100))
 
   // Pro každý rok získat seřazený žebříček
