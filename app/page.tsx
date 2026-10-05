@@ -372,7 +372,7 @@ export default function Page() {
         const firstPlace = newLeaderboard[0]
         const currentUser = newLeaderboard[userPosition]
         const pointsDiff = firstPlace.total_points - currentUser.total_points
-        setMotivationMessage(`No výborně, na první místo ztrácíš už jenom ${pointsDiff.toFixed(1)} bodů!`)
+        setMotivationMessage(`No výborně, na první místo ztrácíš už jenom ${pointsDiff.toFixed(2)} bodů!`)
         // Hláška zůstane zobrazená - nezmizí automaticky
       } else {
         // Pokud je první, vymazat motivační hlášku
@@ -562,7 +562,7 @@ export default function Page() {
             <div>
               <div className="week-label"><span className="live-dot" /> {currentWeek}. TÝDEN VÝZVY</div>
               <p className="week-title">Ještě {daysRemaining} {daysRemaining === 1 ? 'den' : daysRemaining < 5 ? 'dny' : 'dní'} do cíle</p>
-              <p className="week-subtitle">Společně jsme uběhli <strong>{leaderboard.reduce((sum, r) => sum + r.total_beh, 0).toFixed(1)} km</strong></p>
+              <p className="week-subtitle">Společně jsme uběhli <strong>{leaderboard.reduce((sum, r) => sum + r.total_beh, 0).toFixed(2)} km</strong></p>
             </div>
             <div style={{ position: 'relative', width: '66px', height: '66px' }}>
               <svg style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }} width="66" height="66">
@@ -612,9 +612,9 @@ export default function Page() {
                     <div className="rank">{rank === 1 ? <Trophy className="rank-trophy" /> : isLast ? <Beer className="rank-trophy" style={{ color: '#f59e0b' }} /> : `0${rank}`}</div>
                     <div className={`avatar ${runner.color}`}>{runner.initials}</div>
                     <div className="runner-main">
-                      <div className="runner-top"><h3>{runner.name}</h3><strong>{runner.total_points.toFixed(1)} <small>bodů</small></strong></div>
+                      <div className="runner-top"><h3>{runner.name}</h3><strong>{runner.total_points.toFixed(2)} <small>bodů</small></strong></div>
                       <div className="runner-stats">
-                        <span><Zap /> {runner.total_beh.toFixed(1)} km</span>
+                        <span><Zap /> {runner.total_beh.toFixed(2)} km</span>
                         <span><Mountain /> {runner.total_kokotmetr.toLocaleString()} kokotm</span>
                         <span><WineOff /> {runner.sober_days} dní</span>
                       </div>
@@ -691,7 +691,7 @@ export default function Page() {
                       if (val === '' || parseFloat(val) >= 0) setBeh(val)
                     }}
                     aria-label="Běh v kilometrech"
-                    step="0.1"
+                    step="0.01"
                     min="0"
                   />
                   <b>km</b>
@@ -708,7 +708,7 @@ export default function Page() {
                       if (val === '' || parseFloat(val) >= 0) setKolo(val)
                     }}
                     aria-label="Kolo v kilometrech"
-                    step="0.1"
+                    step="0.01"
                     min="0"
                   />
                   <b>km</b>
@@ -727,7 +727,7 @@ export default function Page() {
                       if (val === '' || parseFloat(val) >= 0) setBasen(val)
                     }}
                     aria-label="Bazén v kilometrech"
-                    step="0.1"
+                    step="0.01"
                     min="0"
                   />
                   <b>km</b>
@@ -761,7 +761,7 @@ export default function Page() {
                     placeholder="80.5"
                     aria-label="Váha"
                     min="0"
-                    step="0.1"
+                    step="0.01"
                   />
                   <b>kg</b>
                 </div>
@@ -869,15 +869,15 @@ export default function Page() {
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '0.75rem', textAlign: 'center' }}>
                   <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.beh.toString()), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.beh.toString()), 0).toFixed(2)}</div>
                     <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>běh km</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.kolo.toString()), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.kolo.toString()), 0).toFixed(2)}</div>
                     <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>kolo km</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.bazen.toString()), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + parseFloat(a.bazen.toString()), 0).toFixed(2)}</div>
                     <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>bazén km</div>
                   </div>
                   <div>
@@ -889,7 +889,7 @@ export default function Page() {
                     <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>dní bez 🍺</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + a.beh + Math.floor(a.kolo / 10) * 2 + Math.floor(a.bazen) * 2 + a.kokotmetr + (a.no_alcohol ? 1 : 0), 0).toFixed(1)}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{filteredActivities.reduce((sum, a) => sum + a.beh + Math.floor(a.kolo / 10) * 2 + Math.floor(a.bazen) * 2 + a.kokotmetr + (a.no_alcohol ? 1 : 0), 0).toFixed(2)}</div>
                     <div style={{ fontSize: '0.625rem', opacity: 0.9, lineHeight: 1.2 }}>body</div>
                   </div>
                 </div>
@@ -927,7 +927,7 @@ export default function Page() {
                             }}
                             style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
                             min="0"
-                            step="0.1"
+                            step="0.01"
                           />
                         ) : activity.beh}
                       </td>
@@ -942,7 +942,7 @@ export default function Page() {
                             }}
                             style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
                             min="0"
-                            step="0.1"
+                            step="0.01"
                           />
                         ) : activity.kolo}
                       </td>
@@ -957,7 +957,7 @@ export default function Page() {
                             }}
                             style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
                             min="0"
-                            step="0.1"
+                            step="0.01"
                           />
                         ) : activity.bazen}
                       </td>
@@ -983,7 +983,7 @@ export default function Page() {
                             onChange={(e) => setEditValues({...editValues, weight: e.target.value})}
                             style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #333', borderRadius: '4px', color: '#fff' }}
                             min="0"
-                            step="0.1"
+                            step="0.01"
                             placeholder="-"
                           />
                         ) : (activity.weight || '—')}
@@ -1056,7 +1056,7 @@ export default function Page() {
                           }}
                           style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
                           min="0"
-                          step="0.1"
+                          step="0.01"
                           placeholder="0"
                         />
                       </td>
@@ -1070,7 +1070,7 @@ export default function Page() {
                           }}
                           style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
                           min="0"
-                          step="0.1"
+                          step="0.01"
                           placeholder="0"
                         />
                       </td>
@@ -1084,7 +1084,7 @@ export default function Page() {
                           }}
                           style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
                           min="0"
-                          step="0.1"
+                          step="0.01"
                           placeholder="0"
                         />
                       </td>
@@ -1108,7 +1108,7 @@ export default function Page() {
                           onChange={(e) => setNewEntryValues({...newEntryValues, weight: e.target.value})}
                           style={{ width: '60px', padding: '0.25rem', background: '#111', border: '1px solid #10b981', borderRadius: '4px', color: '#fff' }}
                           min="0"
-                          step="0.1"
+                          step="0.01"
                           placeholder="-"
                         />
                       </td>
@@ -1507,7 +1507,7 @@ export default function Page() {
                       {positionStats.pointsBehind !== null ? (
                         <div style={{ padding: '1rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca', textAlign: 'center' }}>
                           <div style={{ fontSize: '0.75rem', color: '#991b1b', marginBottom: '0.5rem' }}>Ztráta na {positionStats.userBehind}</div>
-                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#dc2626' }}>-{positionStats.pointsBehind.toFixed(1)}</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#dc2626' }}>-{positionStats.pointsBehind.toFixed(2)}</div>
                           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>bodů</div>
                         </div>
                       ) : (
@@ -1519,7 +1519,7 @@ export default function Page() {
                       {positionStats.pointsAhead !== null ? (
                         <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', textAlign: 'center' }}>
                           <div style={{ fontSize: '0.75rem', color: '#166534', marginBottom: '0.5rem' }}>Náskok před {positionStats.userAhead}</div>
-                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#15803d' }}>+{positionStats.pointsAhead.toFixed(1)}</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#15803d' }}>+{positionStats.pointsAhead.toFixed(2)}</div>
                           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>bodů</div>
                         </div>
                       ) : (
@@ -1592,12 +1592,12 @@ export default function Page() {
                     </PieChart>
                   </ResponsiveContainer>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginTop: '1rem', fontSize: '0.875rem' }}>
-                    <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#3b82f6', borderRadius: '2px', marginRight: '0.5rem' }}></span>Běh: <strong>{pointsBreakdown.behPoints.toFixed(1)}</strong></div>
+                    <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#3b82f6', borderRadius: '2px', marginRight: '0.5rem' }}></span>Běh: <strong>{pointsBreakdown.behPoints.toFixed(2)}</strong></div>
                     <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#10b981', borderRadius: '2px', marginRight: '0.5rem' }}></span>Kolo: <strong>{pointsBreakdown.koloPoints}</strong></div>
                     <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#06b6d4', borderRadius: '2px', marginRight: '0.5rem' }}></span>Bazén: <strong>{pointsBreakdown.bazenPoints}</strong></div>
                     <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#f59e0b', borderRadius: '2px', marginRight: '0.5rem' }}></span>Kokotmetr: <strong>{pointsBreakdown.kokotmetrPoints}</strong></div>
                     <div><span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#8b5cf6', borderRadius: '2px', marginRight: '0.5rem' }}></span>Bez 🍺: <strong>{pointsBreakdown.alcoholPoints}</strong></div>
-                    <div style={{ fontWeight: 700, color: '#173b29' }}>Celkem: <strong>{pointsBreakdown.totalPoints.toFixed(1)}</strong></div>
+                    <div style={{ fontWeight: 700, color: '#173b29' }}>Celkem: <strong>{pointsBreakdown.totalPoints.toFixed(2)}</strong></div>
                   </div>
                 </div>
 
@@ -1638,22 +1638,22 @@ export default function Page() {
                     <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>⭐ Nejlepší den</h3>
                     <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
                       <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#173b29' }}>{new Date(bestDay.date).toLocaleDateString('cs-CZ')}</div>
-                      <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#f59e0b', marginTop: '0.5rem' }}>{bestDay.points.toFixed(1)} bodů</div>
+                      <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#f59e0b', marginTop: '0.5rem' }}>{bestDay.points.toFixed(2)} bodů</div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', fontSize: '0.875rem' }}>
                       {bestDay.beh > 0 && (
                         <div style={{ padding: '0.5rem', background: '#f0f9ff', borderRadius: '6px' }}>
-                          <span style={{ color: '#64748b' }}>Běh:</span> <strong>{bestDay.beh.toFixed(1)} km</strong>
+                          <span style={{ color: '#64748b' }}>Běh:</span> <strong>{bestDay.beh.toFixed(2)} km</strong>
                         </div>
                       )}
                       {bestDay.kolo > 0 && (
                         <div style={{ padding: '0.5rem', background: '#f0fdf4', borderRadius: '6px' }}>
-                          <span style={{ color: '#64748b' }}>Kolo:</span> <strong>{bestDay.kolo.toFixed(1)} km</strong>
+                          <span style={{ color: '#64748b' }}>Kolo:</span> <strong>{bestDay.kolo.toFixed(2)} km</strong>
                         </div>
                       )}
                       {bestDay.bazen > 0 && (
                         <div style={{ padding: '0.5rem', background: '#fef3c7', borderRadius: '6px' }}>
-                          <span style={{ color: '#64748b' }}>Bazén:</span> <strong>{bestDay.bazen.toFixed(1)} km</strong>
+                          <span style={{ color: '#64748b' }}>Bazén:</span> <strong>{bestDay.bazen.toFixed(2)} km</strong>
                         </div>
                       )}
                       {bestDay.kokotmetr > 0 && (
@@ -1710,26 +1710,26 @@ export default function Page() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>
                     <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '6px' }}>
                       <div style={{ color: '#64748b' }}>Tvoje body</div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userPoints.toFixed(1)}</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userPoints.toFixed(2)}</div>
                     </div>
                     <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '6px' }}>
                       <div style={{ color: '#64748b' }}>Průměr</div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.averagePoints.toFixed(1)}</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.averagePoints.toFixed(2)}</div>
                     </div>
                     <div style={{ padding: '0.5rem', background: '#f0f9ff', borderRadius: '6px' }}>
                       <div style={{ color: '#64748b' }}>Tvůj běh</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userBeh.toFixed(1)} km</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageBeh.toFixed(1)} km</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userBeh.toFixed(2)} km</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageBeh.toFixed(2)} km</div>
                     </div>
                     <div style={{ padding: '0.5rem', background: '#f0fdf4', borderRadius: '6px' }}>
                       <div style={{ color: '#64748b' }}>Tvoje kolo</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userKolo.toFixed(1)} km</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageKolo.toFixed(1)} km</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userKolo.toFixed(2)} km</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageKolo.toFixed(2)} km</div>
                     </div>
                     <div style={{ padding: '0.5rem', background: '#fef3c7', borderRadius: '6px' }}>
                       <div style={{ color: '#64748b' }}>Tvůj bazén</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userBazen.toFixed(1)} km</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageBazen.toFixed(1)} km</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#173b29' }}>{comparisonToAverage.userBazen.toFixed(2)} km</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>vs {comparisonToAverage.averageBazen.toFixed(2)} km</div>
                     </div>
                     <div style={{ padding: '0.5rem', background: '#fce7f3', borderRadius: '6px' }}>
                       <div style={{ color: '#64748b' }}>Tvůj kokotmetr</div>
@@ -1780,16 +1780,16 @@ export default function Page() {
                               <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#173b29' }}>Týden {week.weekNumber}</div>
                               <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{week.weekLabel}</div>
                             </div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10b981' }}>{week.points.toFixed(1)} bodů</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10b981' }}>{week.points.toFixed(2)} bodů</div>
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', fontSize: '0.75rem', marginTop: '0.75rem' }}>
                             <div>
                               <div style={{ color: '#64748b' }}>Běh</div>
-                              <div style={{ fontWeight: 600 }}>{week.beh.toFixed(1)} km</div>
+                              <div style={{ fontWeight: 600 }}>{week.beh.toFixed(2)} km</div>
                             </div>
                             <div>
                               <div style={{ color: '#64748b' }}>Kolo</div>
-                              <div style={{ fontWeight: 600 }}>{week.kolo.toFixed(1)} km</div>
+                              <div style={{ fontWeight: 600 }}>{week.kolo.toFixed(2)} km</div>
                             </div>
                             <div>
                               <div style={{ color: '#64748b' }}>Kokotm</div>
@@ -1985,13 +1985,13 @@ export default function Page() {
                           {weightStats.hasReachedGoal ? 'Cíl dosažen!' : 'Zbývá'}
                         </div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 700, color: weightStats.hasReachedGoal ? '#166534' : '#991b1b' }}>
-                          {weightStats.hasReachedGoal ? '✓' : `${weightStats.remaining.toFixed(1)} kg`}
+                          {weightStats.hasReachedGoal ? '✓' : `${weightStats.remaining.toFixed(2)} kg`}
                         </div>
                       </div>
                     </div>
                     <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fffbeb', borderRadius: '8px', textAlign: 'center' }}>
                       <div style={{ fontSize: '0.875rem', color: '#92400e' }}>
-                        <strong>Úbytek:</strong> {weightStats.weightLoss.toFixed(1)} kg | <strong>Cíl:</strong> {weightStats.goalWeight} kg
+                        <strong>Úbytek:</strong> {weightStats.weightLoss.toFixed(2)} kg | <strong>Cíl:</strong> {weightStats.goalWeight} kg
                       </div>
                     </div>
                   </div>

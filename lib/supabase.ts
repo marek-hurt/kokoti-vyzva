@@ -1200,11 +1200,11 @@ export async function getAchievements(userId: string, startDate?: string, endDat
     unlocked: totalBeh >= 300
   })
 
-  // 🚴 Cyklista - Více než 500 km na kole
+  // 🚴 EPO - Více než 500 km na kole
   const totalKolo = activities?.reduce((sum, a) => sum + a.kolo, 0) || 0
   badges.push({
     id: 'cyklista',
-    name: 'Cyklista',
+    name: 'EPO',
     description: 'Více než 500 km na kole',
     emoji: '🚴',
     type: 'achievement',
