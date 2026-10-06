@@ -55,6 +55,9 @@ export default function Page() {
   const [showLoginScreen, setShowLoginScreen] = useState(true)
   const [authChecked, setAuthChecked] = useState(false)
   const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [refreshToken, setRefreshToken] = useState(0)
+  const posledniRefresh = useRef(0)
+  const tichyRefresh = useRef(false)
   const [statsUserId, setStatsUserId] = useState<string>('')
   const [userStreaks, setUserStreaks] = useState<UserStreaks | null>(null)
   const [pointsBreakdown, setPointsBreakdown] = useState<PointsBreakdown | null>(null)
@@ -104,7 +107,7 @@ export default function Page() {
       }
     }
     loadSettings()
-  }, [isAuthenticated])
+  }, [isAuthenticated, refreshToken])
 
   // Funkce pro přihlášení
   async function handleLogin() {
@@ -160,12 +163,41 @@ export default function Page() {
   const totalWeeks = Math.ceil(totalDays / 7)
   const currentWeek = Math.max(1, Math.min(totalWeeks, Math.ceil(daysElapsed / 7)))
 
+  // PWA v rezimu standalone se pri otevreni z plochy casto jen obnovi z pameti.
+  // React se pritom nenamountuje, takze by se data uz nikdy znovu nenacetla
+  // a clovek vidi stav z posledni navstevy, dokud nedá rucni refresh. Proto je
+  // obnovime pokazde, kdyz se appka vrati do popredi.
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    function obnovit() {
+      if (document.visibilityState !== 'visible') return
+
+      // Pri rychlem preskakovani mezi appkami nema smysl tlacit na databazi
+      const ted = Date.now()
+      if (ted - posledniRefresh.current < 10000) return
+
+      tichyRefresh.current = true
+      setRefreshToken(t => t + 1)
+    }
+
+    document.addEventListener('visibilitychange', obnovit)
+    window.addEventListener('focus', obnovit)
+
+    return () => {
+      document.removeEventListener('visibilitychange', obnovit)
+      window.removeEventListener('focus', obnovit)
+    }
+  }, [isAuthenticated])
+
   // Načíst data z databáze
   useEffect(() => {
     if (!isAuthenticated) return
 
     async function fetchData() {
-      setLoading(true)
+      // Pri tichem obnoveni nechceme prebit zebricek hlaskou "Nacitam data..."
+      if (!tichyRefresh.current) setLoading(true)
+      posledniRefresh.current = Date.now()
       const [leaderboardData, usersData, activitiesData, historyData] = await Promise.all([
         getLeaderboard(challengeStart, challengeEnd, sunnyDay),
         getUsers(),
@@ -199,9 +231,10 @@ export default function Page() {
         }
       }
       setLoading(false)
+      tichyRefresh.current = false
     }
     fetchData()
-  }, [challengeStart, challengeEnd, sunnyDay, isAuthenticated])
+  }, [challengeStart, challengeEnd, sunnyDay, isAuthenticated, refreshToken])
 
   // Uložit vybraného uživatele do localStorage a URL při změně
   useEffect(() => {
