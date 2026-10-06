@@ -58,6 +58,60 @@ export function formatDatum(d: Date): string {
   return `${d.getFullYear()}-${mesic}-${den}`
 }
 
+// Vyhodnoceni anglicek.
+//
+// Dnesni den je volny: clovek si anglicaky odskrtne treba az vecer, i kdyz je
+// rano udelal, takze chybejici dnesni zapis nikoho ze seznamu nevyrazuje. Az
+// dnesek skonci a zustane nevyplneny, uzivatel vypadne.
+//
+// Pro setrvani v seznamu ale nestaci streak - kdo vynechal kterykoli uzavreny
+// den vyzvy, konci, i kdyby od te doby jel bez chyby. Proto 'stalSoutezi'
+// kontroluje vsechny dny od zacatku vyzvy po vcerejsek, zvlast od 'streak',
+// ktery se pocita jen zpetne a slouzi k zobrazeni a k odznacku SAS.
+export function vyhodnotitAnglicaky(
+  zapisy: Array<{ pushups: boolean; date: string }>,
+  posledniDen: Date,
+  zacatekVyzvy?: string
+): { streak: number; stalSoutezi: boolean } {
+  const maAnglicaky = (datum: string) =>
+    zapisy.some(z => z.date === datum && z.pushups)
+
+  // Bez zadaneho zacatku vyzvy nemame proti cemu cisty stit merit, vezmeme
+  // nejstarsi zapis uzivatele.
+  const zacatek = zacatekVyzvy
+    ?? zapisy.map(z => z.date).sort()[0]
+    ?? formatDatum(posledniDen)
+
+  // Dnesek se nepocita mezi uzavrene dny, u minulych vyzev uzavreny je.
+  const posledniUzavreny = new Date(posledniDen)
+  if (formatDatum(posledniDen) === formatDatum(dnes())) {
+    posledniUzavreny.setDate(posledniUzavreny.getDate() - 1)
+  }
+
+  let stalSoutezi = true
+  for (let d = parseDatum(zacatek); d <= posledniUzavreny; d.setDate(d.getDate() + 1)) {
+    if (!maAnglicaky(formatDatum(d))) {
+      stalSoutezi = false
+      break
+    }
+  }
+
+  let streak = 0
+  const checkDate = new Date(posledniDen)
+  if (!maAnglicaky(formatDatum(checkDate))) {
+    checkDate.setDate(checkDate.getDate() - 1)
+  }
+  for (let i = 0; i < 365; i++) {
+    const datum = formatDatum(checkDate)
+    if (datum < zacatek) break
+    if (!maAnglicaky(datum)) break
+    streak++
+    checkDate.setDate(checkDate.getDate() - 1)
+  }
+
+  return { streak, stalSoutezi }
+}
+
 // Pocet dni vcetne obou kraju. Drive se tu pouzivalo Math.ceil(rozdil) + 1,
 // coz castecny den zaokrouhlilo nahoru a pak jej pricetlo jeste podruhe -
 // druhy den vyzvy tak vychazel jako tri dny a aktivita 33 % misto 50 %.
@@ -1334,25 +1388,9 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   const { data: pushupsData } = await pushupsQuery
 
   // Počítáme aktuální streak angliček (musí být každý den bez mezery)
-  let currentPushupsStreak = 0
-
-  if (pushupsData && pushupsData.length > 0) {
-    // Počítáme zpětně od dneška
-    const checkDate = dnes()
-
-    // Pro každý den zpětně kontrolujeme, jestli má anglické
-    for (let i = 0; i < pushupsData.length; i++) {
-      const activityDate = formatDatum(checkDate)
-      const dayActivity = pushupsData.find(a => a.date === activityDate)
-
-      if (dayActivity && dayActivity.pushups) {
-        currentPushupsStreak++
-        checkDate.setDate(checkDate.getDate() - 1)
-      } else {
-        break // Pokud jeden den chybí nebo nemá anglické, končíme
-      }
-    }
-  }
+  const currentPushupsStreak = pushupsData
+    ? vyhodnotitAnglicaky(pushupsData, dnes(), startDate).streak
+    : 0
 
   badges.push({
     id: 'sas',
@@ -1773,30 +1811,13 @@ export async function getPushupsLeaderboard(startDate?: string, endDate?: string
 
     const { data: activities } = await query
 
-    if (!activities || activities.length === 0) continue
 
-    // Počítáme aktuální streak - musí jít od posledního dne výzvy (nebo dneška) zpětně bez mezery
-    let currentStreak = 0
-    let checkDate = new Date(startCheckDate)
+    // Čistý štít od začátku výzvy po včerejšek; dnešek smí být nevyplněný
+    const { streak: currentStreak, stalSoutezi } =
+      vyhodnotitAnglicaky(activities ?? [], startCheckDate, startDate)
 
-    for (let i = 0; i < 100; i++) { // Max 100 dní zpětně
-      const dateStr = formatDatum(checkDate)
-
-      // Pokud jsme mimo rozsah výzvy, přestaň
-      if (startDate && dateStr < startDate) break
-
-      const dayActivity = activities.find(a => a.date === dateStr)
-
-      if (dayActivity && dayActivity.pushups) {
-        currentStreak++
-        checkDate.setDate(checkDate.getDate() - 1)
-      } else {
-        break
-      }
-    }
-
-    // Přidat do leaderboardu jen pokud má aktivní streak
-    if (currentStreak > 0) {
+    // V seznamu zůstává jen ten, kdo nevynechal žádný uzavřený den
+    if (stalSoutezi) {
       leaderboard.push({
         userId: user.id,
         userName: user.name,
