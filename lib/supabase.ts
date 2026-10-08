@@ -1326,16 +1326,72 @@ export async function getAchievements(userId: string, startDate?: string, endDat
     unlocked: consistency.activeDaysPercent === 100
   })
 
-  // 🐌 Konzistentní Mrdka - Konzistence nad 80, ale méně než 100 bodů celkem
-  const userEntry = leaderboard.find(u => u.id === userId)
-  const totalPoints = userEntry?.total_points || 0
+  // 🐌 Konzistentní Mrdka - chodí pořád, ale poslední dobou nedělá nic.
+  //
+  // Hodnotí se na klouzavém okně posledních dní, ne kumulativně za celou
+  // výzvu. Odznáček tím popisuje aktuální formu: kdo se rozjede, ztratí ho,
+  // kdo zlenivěl, ho dostane. Stejně dynamický jako Alkáč.
+  //
+  // Dřív to bylo 'skóre >= 80 && celkem < 100 bodů', což se v čase rozpadalo:
+  // na začátku výzvy má pod 100 bodů každý, takže odznáček padl všem, a ke
+  // konci ho nemohl mít nikdo, protože kdo je aktivní 80 % dní, stovku
+  // překročí. Proto se body měří proti průměru pole za stejné okno.
+  //
+  // Práh 50 % je zkalibrovaný na ročnících 2020-2025: nejslabší 'normální'
+  // účastník se drží kolem 54-62 % průměru, zatímco odpadlíci (Fery 2021 na
+  // 27 %, Karel 2025 na 31 %) jsou od pole odděleni výraznou mezerou. Mezi
+  // 33 % a 50 % dává práh identický výsledek, 50 % ale leží uprostřed mezery
+  // a má rezervu na obě strany.
+  const OKNO_DNI = 7
+  const PODIL_PRUMERU = 0.5
+
+  // Kumulativní body za celou výzvu - používá je odznáček Totální čůrák níž
+  const totalPoints = leaderboard.find(u => u.id === userId)?.total_points || 0
+
+  let maKonzistentniMrdku = false
+
+  // Vyhodnocujeme teprve, až je výzva aspoň tak dlouhá jako okno
+  if (consistency.totalDays >= OKNO_DNI) {
+    const konecOkna = endDate ? parseDatum(endDate) : dnes()
+    const dnesni = dnes()
+    const posledniDen = konecOkna < dnesni ? konecOkna : dnesni
+
+    const zacatekOkna = new Date(posledniDen)
+    zacatekOkna.setDate(zacatekOkna.getDate() - (OKNO_DNI - 1))
+
+    // Okno nikdy nesmí sahat před začátek výzvy
+    const zacatekVyzvy = startDate ? parseDatum(startDate) : zacatekOkna
+    const od = zacatekOkna < zacatekVyzvy ? zacatekVyzvy : zacatekOkna
+
+    // Pozn.: getLeaderboard bez sunnyDay, takže ve sluníčkový den se body
+    // v okně spočítají běžným způsobem, ne podle pravidel pro piva.
+    const [oknoLeaderboard, oknoKonzistence] = await Promise.all([
+      getLeaderboard(formatDatum(od), formatDatum(posledniDen)),
+      getConsistencyScore(userId, formatDatum(od), formatDatum(posledniDen))
+    ])
+
+    const mojeBodyVOkne = oknoLeaderboard.find(u => u.id === userId)?.total_points || 0
+
+    // Do průměru jen ti, co v okně vůbec něco zapsali - jinak by ho stahovali
+    // neúčastníci a odznáček by nedostal nikdo.
+    const souteziciVOkne = oknoLeaderboard.filter(u => u.total_points > 0)
+    const prumerVOkne = souteziciVOkne.length > 0
+      ? souteziciVOkne.reduce((sum, u) => sum + u.total_points, 0) / souteziciVOkne.length
+      : 0
+
+    maKonzistentniMrdku =
+      oknoKonzistence.score >= 80 &&
+      prumerVOkne > 0 &&
+      mojeBodyVOkne < prumerVOkne * PODIL_PRUMERU
+  }
+
   badges.push({
     id: 'konzistentni-mrdka',
     name: 'Konzistentní Mrdka',
-    description: 'Skvělá konzistence, ale výkony napiču',
+    description: `Poslední ${OKNO_DNI} dní chodíš, ale výkony napiču`,
     emoji: '🐌',
     type: 'achievement',
-    unlocked: consistency.score >= 80 && totalPoints < 100
+    unlocked: maKonzistentniMrdku
   })
 
   // 💪 Warrior - Více než 400 bodů
