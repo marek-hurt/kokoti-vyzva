@@ -1886,6 +1886,72 @@ export async function getPushupsLeaderboard(startDate?: string, endDate?: string
   return leaderboard.sort((a, b) => b.currentStreak - a.currentStreak)
 }
 
+export type WeightLossEntry = {
+  userId: string
+  name: string
+  firstWeight: number
+  currentWeight: number
+  weightLoss: number
+  pocetMereni: number
+}
+
+// Úbytky váhy všech účastníků, seřazené od největšího.
+//
+// weightLoss je kladné, když člověk zhubnul, záporné, když přibral. Absolutní
+// váhy sice vracíme (kdyby se někdy hodily), ale graf v appce je záměrně
+// nezobrazuje - jde jen o to, kdo kolik shodil.
+export async function getWeightLossAll(startDate?: string, endDate?: string): Promise<WeightLossEntry[]> {
+  let query = supabase
+    .from('activities')
+    .select('user_id, weight, date')
+    .not('weight', 'is', null)
+    .order('date', { ascending: true })
+
+  if (startDate) query = query.gte('date', startDate)
+  if (endDate) query = query.lte('date', endDate)
+
+  const [zapisyRes, usersRes] = await Promise.all([
+    query,
+    supabase.from('users').select('id, name')
+  ])
+
+  const zapisy = zapisyRes.data
+  const users = usersRes.data
+
+  if (!zapisy || !users) return []
+
+  // Zápisy jsou seřazené podle data, takže první výskyt je nejstarší měření
+  // a poslední přepis je to nejnovější.
+  const prvni = new Map<string, number>()
+  const posledni = new Map<string, number>()
+  const pocty = new Map<string, number>()
+
+  for (const z of zapisy) {
+    if (z.weight === null || z.weight === undefined) continue
+    if (!prvni.has(z.user_id)) prvni.set(z.user_id, z.weight)
+    posledni.set(z.user_id, z.weight)
+    pocty.set(z.user_id, (pocty.get(z.user_id) ?? 0) + 1)
+  }
+
+  return users
+    // Stačí jedno měření - kdo zapsal počáteční váhu, je v seznamu. S jediným
+    // zápisem vyjde úbytek nula, což je poctivé: ještě se nemá co srovnávat.
+    .filter(u => (pocty.get(u.id) ?? 0) >= 1)
+    .map(u => {
+      const first = prvni.get(u.id) as number
+      const last = posledni.get(u.id) as number
+      return {
+        userId: u.id,
+        name: u.name,
+        firstWeight: first,
+        currentWeight: last,
+        weightLoss: first - last,
+        pocetMereni: pocty.get(u.id) ?? 0
+      }
+    })
+    .sort((a, b) => b.weightLoss - a.weightLoss)
+}
+
 // Funkce pro načtení globálních nastavení
 export async function getSettings(): Promise<AppSettings | null> {
   const { data, error } = await supabase

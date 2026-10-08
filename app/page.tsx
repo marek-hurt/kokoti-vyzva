@@ -23,8 +23,100 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, getWeightStats, getPushupsLeaderboard, signInWithSharedPassword, hasValidSession, signOut, parseDatum, dnes, formatDatum, pocetDni, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction } from '@/lib/supabase'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, PieChart, Pie, Cell } from 'recharts'
+import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, getWeightStats, getWeightLossAll, getPushupsLeaderboard, signInWithSharedPassword, hasValidSession, signOut, parseDatum, dnes, formatDatum, pocetDni, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction, type WeightLossEntry } from '@/lib/supabase'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, LabelList, ReferenceLine, PieChart, Pie, Cell } from 'recharts'
+
+// --- Graf úbytků váhy ----------------------------------------------------
+//
+// Jedna série (kolik kdo shodil), takže žádná legenda - titulek karty říká, co
+// se kreslí. Vodorovné sloupce, protože devět jmen na vodorovné ose telefonu
+// v portrait režimu je nečitelných.
+//
+// Barva nese jen směr: zelená = zhubnul, oranžová = přibral. Pár je ověřený
+// proti bílému povrchu karty - vyšel CVD ΔE 10,4, zatímco klasická zelená
+// s červenou dávala jen 7,3, tedy pod cílem (zelená/červená je typický problém
+// při deuteranopii). Smysl navíc nese strana sloupce a znaménko u čísla, takže
+// barva není jediný kanál.
+const UBYTEK_ZELENA = '#1b9b62'
+const UBYTEK_ORANZOVA = '#ea580c'
+
+// Sloupec je zakulacený jen na datovém konci, u nuly zůstává hranatý.
+function SloupecUbytku(props: any) {
+  const { x, y, width, height, value } = props
+  const kladny = (value ?? 0) >= 0
+  const vlevo = width < 0 ? x + width : x
+  const sirka = Math.abs(width)
+  const r = Math.min(4, sirka)
+  const vpravo = vlevo + sirka
+
+  const d = kladny
+    ? `M${vlevo},${y} H${vpravo - r} Q${vpravo},${y} ${vpravo},${y + r} V${y + height - r} Q${vpravo},${y + height} ${vpravo - r},${y + height} H${vlevo} Z`
+    : `M${vpravo},${y} H${vlevo + r} Q${vlevo},${y} ${vlevo},${y + r} V${y + height - r} Q${vlevo},${y + height} ${vlevo + r},${y + height} H${vpravo} Z`
+
+  return <path d={d} fill={kladny ? UBYTEK_ZELENA : UBYTEK_ORANZOVA} />
+}
+
+// Svislá osa: přezdívka a za ní počáteční váha v závorce, tišeji.
+function OsaUbytku(props: any) {
+  const { x, y, payload } = props
+  const text: string = payload?.value ?? ''
+  const i = text.lastIndexOf(' (')
+  const jmeno = i === -1 ? text : text.slice(0, i)
+  const vaha = i === -1 ? '' : text.slice(i + 1)
+
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fontSize={11}>
+      <tspan fill="#728078" fontWeight={600}>{jmeno}</tspan>
+      {vaha ? <tspan fill="#9aa89f" dx={4}>{vaha}</tspan> : null}
+    </text>
+  )
+}
+
+// Hodnota u hrotu sloupce. Text nosí inkoustovou barvu, ne barvu série.
+function PopisekUbytku(props: any) {
+  const { x, y, width, height, value } = props
+  const v = value ?? 0
+  const kladny = v >= 0
+  const vlevo = width < 0 ? x + width : x
+  const sirka = Math.abs(width)
+
+  return (
+    <text
+      x={kladny ? vlevo + sirka + 7 : vlevo - 7}
+      y={y + height / 2}
+      dy={4}
+      textAnchor={kladny ? 'start' : 'end'}
+      fill="#152019"
+      fontSize={11}
+      fontWeight={700}
+    >
+      {kladny ? `${v.toFixed(1)} kg` : `+${Math.abs(v).toFixed(1)} kg`}
+    </text>
+  )
+}
+
+// Absolutní váhy tooltip záměrně neukazuje - jde jen o úbytek.
+function TooltipUbytku({ active, payload }: any) {
+  if (!active || !payload || payload.length === 0) return null
+  const d = payload[0].payload as WeightLossEntry
+  const zhubnul = d.weightLoss >= 0
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #dce8df', borderRadius: '10px', padding: '8px 10px', boxShadow: '0 4px 14px #bdd4c233', fontSize: '0.75rem' }}>
+      <strong style={{ color: '#152019' }}>{d.name}</strong>
+      {d.pocetMereni < 2 ? (
+        <div style={{ marginTop: '3px', color: '#728078' }}>Zatím jen jedno měření</div>
+      ) : (
+        <>
+          <div style={{ marginTop: '3px', color: '#728078' }}>
+            {zhubnul ? 'Shodil' : 'Přibral'} <strong style={{ color: '#152019' }}>{Math.abs(d.weightLoss).toFixed(1)} kg</strong>
+          </div>
+          <div style={{ marginTop: '2px', color: '#728078' }}>{d.pocetMereni} měření</div>
+        </>
+      )}
+    </div>
+  )
+}
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState('home')
@@ -74,6 +166,7 @@ export default function Page() {
   const [yearPrediction, setYearPrediction] = useState<YearPrediction | null>(null)
   const [historicalPredictions, setHistoricalPredictions] = useState<HistoricalPrediction[]>([])
   const [weightStats, setWeightStats] = useState<{firstWeight: number, currentWeight: number, goalWeight: number, remaining: number, weightLoss: number, hasReachedGoal: boolean} | null>(null)
+  const [weightLossAll, setWeightLossAll] = useState<WeightLossEntry[]>([])
   const [pushupsLeaderboard, setPushupsLeaderboard] = useState<Array<{userId: string, userName: string, currentStreak: number}>>([])
   const [excuse, setExcuse] = useState<string>('')
   const [generatingExcuse, setGeneratingExcuse] = useState(false)
@@ -300,6 +393,10 @@ export default function Page() {
         // Load pushups leaderboard
         const pushupsData = await getPushupsLeaderboard(challengeStart, challengeEnd)
         setPushupsLeaderboard(pushupsData)
+
+        // Úbytky váhy všech účastníků
+        const ubytky = await getWeightLossAll(challengeStart, challengeEnd)
+        setWeightLossAll(ubytky)
       }
     }
     loadStats()
@@ -2032,6 +2129,66 @@ export default function Page() {
                     </div>
                   </div>
                 )}
+
+                {/* Úbytky váhy - celá parta.
+                    Při jediném účastníkovi se kreslí údaj, ne graf - jednosloupcový
+                    graf je zbytečná obálka kolem jednoho čísla. */}
+                {weightLossAll.length === 1 && (
+                  <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem', color: '#173b29' }}>🐷 Hubnutí prasátek...</h3>
+                    <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}>
+                      Váhu zapsal jediný člověk, tak zatím není co srovnávat.
+                    </p>
+                    <div style={{ textAlign: 'center', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>{weightLossAll[0].name}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: weightLossAll[0].weightLoss >= 0 ? '#1b9b62' : '#ea580c' }}>
+                        {weightLossAll[0].weightLoss >= 0
+                          ? `${weightLossAll[0].weightLoss.toFixed(1)} kg dolů`
+                          : `${Math.abs(weightLossAll[0].weightLoss).toFixed(1)} kg nahoru`}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {weightLossAll.length >= 2 && (() => {
+                  const maxUbytek = Math.max(...weightLossAll.map(u => u.weightLoss), 0)
+                  const minUbytek = Math.min(...weightLossAll.map(u => u.weightLoss), 0)
+                  const jsouPrirustky = minUbytek < 0
+
+                  // Svislá osa čte přezdívku i počáteční váhu z jednoho stringu
+                  const dataGrafu = weightLossAll.map(u => ({
+                    ...u,
+                    popisek: `${u.name} (${u.firstWeight.toFixed(1)})`
+                  }))
+
+                  return (
+                    <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e3ece4', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#173b29' }}>🐷 Hubnutí prasátek...</h3>
+                      <ResponsiveContainer width="100%" height={Math.max(80, weightLossAll.length * 34 + 12)}>
+                        <BarChart data={dataGrafu} layout="vertical" margin={{ top: 4, right: 58, bottom: 4, left: 0 }}>
+                          <XAxis
+                            type="number"
+                            hide
+                            domain={[jsouPrirustky ? minUbytek * 1.45 : 0, Math.max(maxUbytek * 1.15, 0.5)]}
+                          />
+                          <YAxis
+                            type="category"
+                            dataKey="popisek"
+                            width={106}
+                            tickLine={false}
+                            axisLine={false}
+                            tick={<OsaUbytku />}
+                          />
+                          <Tooltip content={<TooltipUbytku />} cursor={{ fill: '#f3f7f2' }} />
+                          {jsouPrirustky && <ReferenceLine x={0} stroke="#c3c2b7" strokeWidth={1} />}
+                          <Bar dataKey="weightLoss" barSize={20} shape={<SloupecUbytku />} isAnimationActive={false}>
+                            <LabelList dataKey="weightLoss" content={<PopisekUbytku />} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )
+                })()}
 
                 {/* Pushups Leaderboard */}
                 {pushupsLeaderboard.length > 0 && (
