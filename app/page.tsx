@@ -72,25 +72,26 @@ function OsaUbytku(props: any) {
   )
 }
 
-// Hodnota u hrotu sloupce. Text nosí inkoustovou barvu, ne barvu série.
+// Hodnota vždy napravo od pravého okraje sloupce. U úbytku je to hrot, u
+// přírůstku nula - sloupec roste doleva, takže jeho pravý okraj nulu tvoří.
+// Doleva popisek jít nemůže, tam naráží do jmen na ose.
 function PopisekUbytku(props: any) {
   const { x, y, width, height, value } = props
   const v = value ?? 0
-  const kladny = v >= 0
   const vlevo = width < 0 ? x + width : x
   const sirka = Math.abs(width)
 
   return (
     <text
-      x={kladny ? vlevo + sirka + 7 : vlevo - 7}
+      x={vlevo + sirka + 7}
       y={y + height / 2}
       dy={4}
-      textAnchor={kladny ? 'start' : 'end'}
+      textAnchor="start"
       fill="#152019"
       fontSize={11}
       fontWeight={700}
     >
-      {kladny ? `${v.toFixed(1)} kg` : `+${Math.abs(v).toFixed(1)} kg`}
+      {v >= 0 ? `${v.toFixed(1)} kg` : `+${Math.abs(v).toFixed(1)} kg`}
     </text>
   )
 }
@@ -2169,7 +2170,7 @@ export default function Page() {
                           <XAxis
                             type="number"
                             hide
-                            domain={[jsouPrirustky ? minUbytek * 1.45 : 0, Math.max(maxUbytek * 1.15, 0.5)]}
+                            domain={[jsouPrirustky ? minUbytek * 1.1 : 0, Math.max(maxUbytek * 1.15, 0.5)]}
                           />
                           <YAxis
                             type="category"
