@@ -2197,8 +2197,15 @@ export type HistoricalPrediction = {
 // takže 0.30 leží mírně nad tím číslem záměrně.
 const SIMULACI = 10000
 const PRIOR_DNI = 7        // síla historického ukotvení, ve dnech
-const SIGMA_FORMY = 0.30
-const MARGIN_KURZU = 0.02  // sázkařská marže, kniha pak sedí na ~102 %
+const SIGMA_FORMY = 0.40
+const MARGIN_KURZU = 0.02  // sázkařská marže
+const STROP_KURZU = 99     // výš se kurz nevypisuje, nikdo nesází 500/1
+
+// Pravděpodobnost, že člověk výzvu v jejím průběhu odpíská - zraní se, onemocní,
+// odjede. Ukotveno v datech: z 35 osoboroků v HISTORICAL_DATA skončilo 5,7 %
+// pod polovinou vlastního průměru z ostatních let a 8,6 % pod 60 % (Karel 2025
+// na 34 %, Rajny 2023 na 46 %). Rozpočítává se na zbývající část výzvy.
+const P_VYPADEK_ZA_VYZVU = 0.08
 
 // Funkce pro výpočet predikcí založených na historických datech
 export async function getHistoricalPredictions(
@@ -2374,6 +2381,7 @@ export async function getHistoricalPredictions(
   }
 
   const dniZbyva = Math.max(0, totalDays - daysElapsed)
+  const pVypadek = P_VYPADEK_ZA_VYZVU * (totalDays > 0 ? dniZbyva / totalDays : 0)
 
   // Box-Muller
   function normalniVzorek(): number {
@@ -2414,8 +2422,15 @@ export async function getHistoricalPredictions(
       const { osudi, soucasneBody } = simulovani[i]
       const forma = Math.exp(normalniVzorek() * SIGMA_FORMY - (SIGMA_FORMY * SIGMA_FORMY) / 2)
 
+      // Skokový výpadek. Násobitel formy umí "jede o třetinu míň", ale neumí
+      // "skončil" - a zranění není plynulá změna formy. Od vylosovaného dne
+      // už člověk nepřipíše nic.
+      const posledniDenCloveka = Math.random() < pVypadek
+        ? (Math.random() * dniZbyva) | 0
+        : dniZbyva
+
       let total = soucasneBody
-      for (let d = 0; d < dniZbyva; d++) {
+      for (let d = 0; d < posledniDenCloveka; d++) {
         total += osudi[(Math.random() * osudi.length) | 0] * forma
       }
 
@@ -2437,8 +2452,10 @@ export async function getHistoricalPredictions(
     // Kurz z pravděpodobnosti. Marže kurzy zhoršuje, takže se dělí (1 + marže);
     // původní kód násobil 1.02, čímž kniha seděla na 98 % a sázkař byl
     // v plusu. Krajní hodnoty omezit, ať nevznikne dělení nulou ani kurz 4000.
-    const omezena = Math.min(0.999, Math.max(0.001, pravdep))
-    const kurz = Math.min(500, Math.max(1.01, 1 / (omezena * (1 + MARGIN_KURZU))))
+    // Spodní hranici pravděpodobnosti srovnáme se stropem kurzu, ať se ty dvě
+    // omezení nehádají.
+    const omezena = Math.min(0.999, Math.max(1 / (STROP_KURZU * (1 + MARGIN_KURZU)), pravdep))
+    const kurz = Math.min(STROP_KURZU, Math.max(1.01, 1 / (omezena * (1 + MARGIN_KURZU))))
     // Kurzy pod 10 na dvě desetinná místa, výš celé číslo - 58.71 nikdo nesází
     p.odds = kurz < 10 ? Math.round(kurz * 100) / 100 : Math.round(kurz)
 
