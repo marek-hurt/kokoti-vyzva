@@ -384,7 +384,7 @@ export default function Page() {
 
         // Load historical predictions (async function) - pouze pro letošní účastníky
         const currentParticipantNames = users.map(u => u.name)
-        const historicalPreds = await getHistoricalPredictions(currentParticipantNames, challengeStart, challengeEnd)
+        const historicalPreds = await getHistoricalPredictions(currentParticipantNames, challengeStart, challengeEnd, sunnyDay || undefined)
         setHistoricalPredictions(historicalPreds)
 
         // Load weight stats

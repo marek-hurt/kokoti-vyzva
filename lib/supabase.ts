@@ -2189,14 +2189,27 @@ export type HistoricalPrediction = {
   trend: 'improving' | 'declining' | 'stable' | 'new'
 }
 
+// Pravděpodobnost výhry se počítá simulací zbývajících dní, ne skórem.
+//
+// SIGMA_FORMY je ukotvená v datech: rok na rok se člověku mění výsledek
+// průměrně o 24 % (medián 24 %, spočítáno z HISTORICAL_DATA). Násobitel ale
+// působí jen na krátký zbytek výzvy, jehož průměr kolísá víc než celá výzva,
+// takže 0.30 leží mírně nad tím číslem záměrně.
+const SIMULACI = 10000
+const PRIOR_DNI = 7        // síla historického ukotvení, ve dnech
+const SIGMA_FORMY = 0.30
+const MARGIN_KURZU = 0.02  // sázkařská marže, kniha pak sedí na ~102 %
+
 // Funkce pro výpočet predikcí založených na historických datech
 export async function getHistoricalPredictions(
   currentParticipantNames: string[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  sunnyDay?: string
 ): Promise<HistoricalPrediction[]> {
-  // Získat letošní data
-  const currentLeaderboard = await getLeaderboard(startDate, endDate)
+  // Získat letošní data. sunnyDay předáváme, aby součty odpovídaly žebříčku,
+  // který appka ukazuje - bez něj by kurzy počítaly z jiných bodů.
+  const currentLeaderboard = await getLeaderboard(startDate, endDate, sunnyDay)
 
   // Vypočítat % dokončení letošního roku
   const start = parseDatum(startDate)
@@ -2285,45 +2298,14 @@ export async function getHistoricalPredictions(
       trend = 'new'
     }
 
-    // Očekávané body - dynamická váha podle % dokončení letošního roku
-    // Na začátku roku: více váhy na historii
-    // Ke konci roku: více váhy na letošní výkon
-    let expectedPoints = 0
-
-    if (percentComplete < 10) {
-      // Začátek roku - 100% historická data
-      expectedPoints = yearlyPoints.length >= 2
-        ? historicalAverage * 0.7 + (lastYearPoints || 0) * 0.3
-        : historicalAverage || 250
-    } else if (percentComplete < 30) {
-      // 10-30% - postupně zahrnujeme letošní data
-      const historicalWeight = 0.8
-      const currentWeight = 0.2
-      const historicalPrediction = yearlyPoints.length >= 2
-        ? historicalAverage * 0.7 + (lastYearPoints || 0) * 0.3
-        : historicalAverage || 250
-      expectedPoints = historicalPrediction * historicalWeight + currentYearProjection * currentWeight
-    } else if (percentComplete < 60) {
-      // 30-60% - rovnováha mezi historií a letošním rokem
-      const historicalWeight = 0.5
-      const currentWeight = 0.5
-      const historicalPrediction = yearlyPoints.length >= 2
-        ? historicalAverage * 0.7 + (lastYearPoints || 0) * 0.3
-        : historicalAverage || 250
-      expectedPoints = historicalPrediction * historicalWeight + currentYearProjection * currentWeight
-    } else {
-      // 60%+ - hlavně letošní výkon
-      const historicalWeight = 0.2
-      const currentWeight = 0.8
-      const historicalPrediction = yearlyPoints.length >= 2
-        ? historicalAverage * 0.7 + (lastYearPoints || 0) * 0.3
-        : historicalAverage || 250
-      expectedPoints = historicalPrediction * historicalWeight + currentYearProjection * currentWeight
-    }
+    // expectedPoints doplníme ze simulace níž. Dřív se tady míchala historie
+    // s lineární projekcí podle tvrdých stupňů (<10 %, <30 %, <60 %, 60 %+),
+    // což i v poslední den výzvy pouštělo do predikce 20 % historie, přitom
+    // výsledek už byl známý.
 
     predictions.push({
       name,
-      expectedPoints: Math.round(expectedPoints * 10) / 10,
+      expectedPoints: 0, // doplní simulace níž
       winProbability: 0, // Vypočítáme později
       odds: 0, // Vypočítáme později
       historicalAverage: Math.round(historicalAverage * 10) / 10,
@@ -2338,66 +2320,133 @@ export async function getHistoricalPredictions(
     } as any)
   })
 
-  // Vypočítar pravděpodobnost vítězství s ohledem na:
-  // 1. Očekávané body (60%)
-  // 2. Průměrné umístění (25%)
-  // 3. Počet výher v minulosti (15%)
+  // --- Pravděpodobnost výhry: simulace zbývajících dní ---
+  //
+  // Dřív se z relativního skóre (očekávané body, průměrné umístění, počet výher)
+  // dělal softmax. To nedokázalo vyjádřit ani "je rozhodnuto", ani "je to
+  // otevřené". Při 190bodovém vedení dva dny před koncem to dávalo favoritovi
+  // 79 % a druhému kurz 23, přitom dohnat to nelze. Při naprosté remíze
+  // v polovině výzvy to rozdalo od 56 % do 1,7 % jen podle historické reputace.
+  // A vedoucí s dvojnásobkem bodů mohl mít horší kurz než člověk za ním, pokud
+  // ten druhý vyhrál nějaký minulý ročník.
+  //
+  // Teď se zbytek výzvy odsimuluje SIMULACI krát a počítá se, v kolika
+  // průchodech kdo skončil první. Dvě vrstvy nejistoty:
+  //   1) denní rozptyl - losuje se ze skutečných denních výsledků daného
+  //      člověka, takže volné dny i výjimečné nálože se přenesou samy
+  //   2) nejistota formy - na každý průchod se vylosuje násobitel na celý
+  //      zbytek výzvy. Bez něj vycházelo 85bodové vedení v polovině na 100 %,
+  //      což je stejná hloupost jako původní algoritmus, jen z druhé strany
+  //
+  // Historie vstupuje jako PRIOR_DNI umělých dní na historickém tempu přidaných
+  // do losovacího osudí. Její váha tím klesá sama (7/(2+7) = 78 % druhý den,
+  // 29 % v polovině, 15 % na konci) a hlavně nikdy nesahá na už odběhané body -
+  // ty jsou fakt. Vliv historie na předpovězený finální součet tak jde ze 85 %
+  // prvního dne na 0 % v poslední den.
 
-  const maxExpectedPoints = Math.max(...predictions.map(p => (p as any).expectedPoints))
-  const maxWins = Math.max(...predictions.map(p => (p as any).wins), 1)
-  const minAvgPosition = Math.min(...predictions.map(p => (p as any).avgPosition))
-  const maxAvgPosition = Math.max(...predictions.map(p => (p as any).avgPosition))
+  // Denní body kvůli odhadu tempa a rozptylu. Součty bereme z žebříčku, který
+  // zná pravidla sluníčkového dne; tahle řada slouží jen k tomu, jak vypadá
+  // typický den daného člověka.
+  const [zapisyRes, uzivateleRes] = await Promise.all([
+    supabase
+      .from('activities')
+      .select('user_id, date, beh, kolo, bazen, kokotmetr, no_alcohol')
+      .gte('date', startDate)
+      .lte('date', endDate),
+    supabase.from('users').select('id, name')
+  ])
 
-  predictions.forEach((p: any) => {
-    // Normalizované skóre (0-1)
-    const pointsScore = p.expectedPoints / maxExpectedPoints
-    const winsScore = p.wins / maxWins
-    const positionScore = maxAvgPosition > minAvgPosition
-      ? 1 - (p.avgPosition - minAvgPosition) / (maxAvgPosition - minAvgPosition)
-      : 1
+  const jmenoPodleId = new Map<string, string>()
+  for (const u of uzivateleRes.data ?? []) jmenoPodleId.set(u.id, u.name)
 
-    // Bonus za výhry:
-    // - Nedávné výhry (poslední 2 roky) = +15% každá
-    // - Starší výhry = +5% každá
-    const recentWinBonus = p.recentWins * 0.15
-    const olderWinBonus = (p.wins - p.recentWins) * 0.05
+  const dennePodleJmena = new Map<string, number[]>()
+  for (const z of zapisyRes.data ?? []) {
+    const jmeno = jmenoPodleId.get(z.user_id)
+    if (!jmeno) continue
+    const body = z.beh +
+                 Math.floor(z.kolo / 10) * 2 +
+                 Math.floor(z.bazen) * 2 +
+                 z.kokotmetr +
+                 (z.no_alcohol ? 1 : 0)
+    const pole = dennePodleJmena.get(jmeno)
+    if (pole) pole.push(body)
+    else dennePodleJmena.set(jmeno, [body])
+  }
 
-    // Bonus za letošní umístění - čím víc dat letos máme, tím větší váha
-    let currentPositionBonus = 0
-    if (p.currentYearPosition > 0 && p.percentComplete > 10) {
-      // Top 3 letos = extra bonus
-      if (p.currentYearPosition === 1) {
-        currentPositionBonus = 0.25 * (p.percentComplete / 100) // až +25% pokud je 1. celý rok
-      } else if (p.currentYearPosition === 2) {
-        currentPositionBonus = 0.15 * (p.percentComplete / 100) // až +15%
-      } else if (p.currentYearPosition === 3) {
-        currentPositionBonus = 0.08 * (p.percentComplete / 100) // až +8%
+  const dniZbyva = Math.max(0, totalDays - daysElapsed)
+
+  // Box-Muller
+  function normalniVzorek(): number {
+    let a = 0
+    let b = 0
+    while (a === 0) a = Math.random()
+    while (b === 0) b = Math.random()
+    return Math.sqrt(-2 * Math.log(a)) * Math.cos(2 * Math.PI * b)
+  }
+
+  const simulovani = predictions.map((p: any) => {
+    const histTempo = p.historicalAverage > 0 ? p.historicalAverage / totalDays : 0
+    const osudi = (dennePodleJmena.get(p.name) ?? []).slice()
+    // Dny bez zápisu jsou taky dny - doplnit nuly, ať rozptyl nelže. Dělá se to
+    // tady, aby nuly dostal i ten, kdo nezapsal vůbec nic a v mapě není.
+    while (osudi.length < daysElapsed) osudi.push(0)
+
+    if (histTempo > 0) {
+      for (let i = 0; i < PRIOR_DNI; i++) osudi.push(histTempo)
+    }
+    if (osudi.length === 0) osudi.push(0)
+
+    return {
+      p,
+      osudi,
+      soucasneBody: currentLeaderboard.find(e => e.name === p.name)?.total_points ?? 0
+    }
+  })
+
+  const vyhry = new Array(simulovani.length).fill(0)
+  const souctyFinal = new Array(simulovani.length).fill(0)
+
+  for (let s = 0; s < SIMULACI; s++) {
+    let idxNejlepsi = -1
+    let nejlepsiBody = -Infinity
+
+    for (let i = 0; i < simulovani.length; i++) {
+      const { osudi, soucasneBody } = simulovani[i]
+      const forma = Math.exp(normalniVzorek() * SIGMA_FORMY - (SIGMA_FORMY * SIGMA_FORMY) / 2)
+
+      let total = soucasneBody
+      for (let d = 0; d < dniZbyva; d++) {
+        total += osudi[(Math.random() * osudi.length) | 0] * forma
+      }
+
+      souctyFinal[i] += total
+      if (total > nejlepsiBody) {
+        nejlepsiBody = total
+        idxNejlepsi = i
       }
     }
 
-    // Vážený celkový score s bonusy
-    p.competitiveScore = (pointsScore * 0.5) + (positionScore * 0.2) + (winsScore * 0.1) + recentWinBonus + olderWinBonus + currentPositionBonus
-  })
+    if (idxNejlepsi >= 0) vyhry[idxNejlepsi]++
+  }
 
-  // Softmax s vyšší teplotou (4.0) pro větší rozdíly mezi favority a outsidery
-  const expScores = predictions.map((p: any) => Math.exp(p.competitiveScore * 4.0))
-  const sumExpScores = expScores.reduce((sum, s) => sum + s, 0)
+  simulovani.forEach(({ p }, i) => {
+    const pravdep = vyhry[i] / SIMULACI
+    p.winProbability = Math.round(pravdep * 1000) / 10
+    p.expectedPoints = Math.round((souctyFinal[i] / SIMULACI) * 10) / 10
 
-  predictions.forEach((p: any, i) => {
-    const probability = (expScores[i] / sumExpScores) * 100
-    p.winProbability = Math.round(probability * 10) / 10
+    // Kurz z pravděpodobnosti. Marže kurzy zhoršuje, takže se dělí (1 + marže);
+    // původní kód násobil 1.02, čímž kniha seděla na 98 % a sázkař byl
+    // v plusu. Krajní hodnoty omezit, ať nevznikne dělení nulou ani kurz 4000.
+    const omezena = Math.min(0.999, Math.max(0.001, pravdep))
+    const kurz = Math.min(500, Math.max(1.01, 1 / (omezena * (1 + MARGIN_KURZU))))
+    // Kurzy pod 10 na dvě desetinná místa, výš celé číslo - 58.71 nikdo nesází
+    p.odds = kurz < 10 ? Math.round(kurz * 100) / 100 : Math.round(kurz)
 
-    // Kurz s menším bookmaker margin (2%)
-    const fairOdds = 100 / probability
-    p.odds = Math.round(fairOdds * 1.02 * 100) / 100
-
-    // Vyčistit dočasné proměnné
     delete p.wins
     delete p.recentWins
     delete p.avgPosition
     delete p.currentYearPosition
     delete p.percentComplete
-    delete p.competitiveScore
   })
 
   // Seřadit podle pravděpodobnosti
