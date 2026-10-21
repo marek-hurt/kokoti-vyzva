@@ -1401,8 +1401,8 @@ export default function Page() {
 
                             return (
                               <Fragment key={user.id}>
-                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg, borderLeft: '1px solid #222' }}>{points.toFixed(2)}</td>
-                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg }}>{kokotmetr.toFixed(2)}</td>
+                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg, borderLeft: '1px solid #222' }}>{+points.toFixed(2)}</td>
+                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg }}>{+kokotmetr.toFixed(2)}</td>
                                 <td style={{ padding: '0.5rem', textAlign: 'center', background: bg }}>{noAlcohol ? '✅' : '🍺'}</td>
                               </Fragment>
                             )
