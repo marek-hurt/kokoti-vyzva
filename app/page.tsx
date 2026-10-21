@@ -1293,9 +1293,9 @@ export default function Page() {
                 <div><p className="eyebrow">PODLE DNŮ</p><h2>Denní <span>přehled</span></h2></div>
               </div>
 
-              <div className="wide-section" style={{ overflowX: 'auto' }}>
+              <div className="wide-section" style={{ overflow: 'auto', maxHeight: '75vh' }}>
                 <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
-                  <thead>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 20, background: '#f3f7f2' }}>
                     <tr style={{ borderBottom: '1px solid #333' }}>
                       <th rowSpan={2} style={{ padding: '0.5rem', textAlign: 'left', fontWeight: 600, verticalAlign: 'bottom', position: 'sticky', left: 0, background: '#f3f7f2', zIndex: 10 }}>Datum</th>
                       {users.map(user => (
@@ -1377,8 +1377,8 @@ export default function Page() {
 
                             return (
                               <Fragment key={user.id}>
-                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg, borderLeft: '1px solid #222' }}>{points}</td>
-                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg }}>{kokotmetr}</td>
+                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg, borderLeft: '1px solid #222' }}>{points.toFixed(2)}</td>
+                                <td style={{ padding: '0.5rem', textAlign: 'right', background: bg }}>{kokotmetr.toFixed(2)}</td>
                                 <td style={{ padding: '0.5rem', textAlign: 'center', background: bg }}>{noAlcohol ? '✅' : '🍺'}</td>
                               </Fragment>
                             )
