@@ -23,6 +23,8 @@ import {
   X,
   Zap,
 } from 'lucide-react'
+import ZavodKokotu from '@/components/ZavodKokotu'
+import { BARVY_AVATARU } from '@/lib/zavod'
 import { getLeaderboard, getUsers, addActivity, getAllActivities, deleteActivity, updateActivity, getPointsHistory, getUserStreaks, getPointsBreakdown, getPositionStats, getDailyAverages, getBestDay, getWeeklyBreakdown, getDayOfWeekStats, getConsistencyScore, getComparisonToAverage, getAchievements, getTrashTalkFeed, getSettings, updateSettings, getYearPrediction, getHistoricalPredictions, getWeightStats, getWeightLossAll, getPushupsLeaderboard, signInWithSharedPassword, hasValidSession, signOut, parseDatum, dnes, formatDatum, pocetDni, type LeaderboardEntry, type User, type Activity, type PointsHistory, type UserStreaks, type PointsBreakdown, type PositionStats, type DailyAverages, type BestDay, type WeeklyBreakdown, type DayOfWeekStats, type ConsistencyScore, type ComparisonToAverage, type Achievements, type TrashTalkMessage, type AppSettings, type YearPrediction, type HistoricalPrediction, type WeightLossEntry } from '@/lib/supabase'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label, LabelList, ReferenceLine, PieChart, Pie, Cell } from 'recharts'
 
@@ -121,6 +123,8 @@ function TooltipUbytku({ active, payload }: any) {
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState('home')
+  const [zavodOtevren, setZavodOtevren] = useState(false)
+  const klepnutiNaLogo = useRef({ pocet: 0, posledni: 0 })
   const [alcoholFree, setAlcoholFree] = useState(true)
   const [submitted, setSubmitted] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
@@ -674,10 +678,30 @@ export default function Page() {
 
   return (
     <main className="app-shell">
+      {zavodOtevren && (
+        <ZavodKokotu
+          activities={activities}
+          users={users}
+          challengeStart={challengeStart}
+          challengeEnd={challengeEnd}
+          sunnyDay={sunnyDay}
+          onClose={() => setZavodOtevren(false)}
+        />
+      )}
       <div className="app-inner">
         <header className="topbar">
           <div className="brand-lockup">
-            <div className="brand-mark"><Trophy /></div>
+            <div
+              className="brand-mark"
+              onClick={() => {
+                // easter egg: 5x rychle klepnout na trofej
+                const ted = Date.now()
+                const k = klepnutiNaLogo.current
+                k.pocet = ted - k.posledni < 1500 ? k.pocet + 1 : 1
+                k.posledni = ted
+                if (k.pocet >= 5) { k.pocet = 0; setZavodOtevren(true) }
+              }}
+            ><Trophy /></div>
             <div>
               <p className="eyebrow">KOKOTÍ VÝZVA</p>
               <h1>Dokážeš-li to, <span>není to jen sen!</span></h1>
@@ -1962,20 +1986,7 @@ export default function Page() {
                           labelFormatter={(value) => new Date(value).toLocaleDateString('cs-CZ')}
                         />
                         {users.map(user => {
-                          const colorMap: {[key: string]: string} = {
-                            'avatar-lime': '#84cc16',
-                            'avatar-coral': '#f87171',
-                            'avatar-blue': '#3b82f6',
-                            'avatar-violet': '#a78bfa',
-                            'avatar-orange': '#fb923c',
-                            'avatar-pink': '#f472b6',
-                            'avatar-cyan': '#06b6d4',
-                            'avatar-yellow': '#eab308',
-                            'avatar-green': '#22c55e',
-                            'avatar-red': '#ef4444',
-                            'avatar-purple': '#a855f7',
-                          }
-                          const color = colorMap[user.color] || '#10b981'
+                          const color = BARVY_AVATARU[user.color] || '#10b981'
 
                           return (
                             <Line
