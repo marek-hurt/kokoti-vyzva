@@ -1418,9 +1418,10 @@ export async function getAchievements(userId: string, startDate?: string, endDat
   const { data: weightData } = await weightQuery
   const firstWeight = weightData?.[0]?.weight
   const lastWeight = weightData?.[weightData.length - 1]?.weight
-  const weightLoss = firstWeight && lastWeight ? firstWeight - lastWeight : 0
 
-  console.log('Ozempic debug:', { weightData, firstWeight, lastWeight, weightLoss, unlocked: weightLoss >= 5 })
+  // Záměrně aktuální úbytek, ne nejlepší dosažený: je to stav, ne trofej.
+  // Kdo zhubnul 5 kg a pak je nabral zpátky, o odznáček zase přijde.
+  const weightLoss = firstWeight && lastWeight ? firstWeight - lastWeight : 0
 
   badges.push({
     id: 'ozempic',
@@ -1443,7 +1444,10 @@ export async function getAchievements(userId: string, startDate?: string, endDat
 
   const { data: pushupsData } = await pushupsQuery
 
-  // Počítáme aktuální streak angliček (musí být každý den bez mezery)
+  // Záměrně aktuální série, ne nejdelší dosažená: SAS je o tom, že člověk dělá
+  // angličáky celou výzvu. Kdo sérii přeruší, tím to přestane platit a odznáček
+  // mu zmizí. Nejdelší série by u delší výzvy medaili dala i tomu, kdo odcvičil
+  // 40 dní ze 60 a pak přestal.
   const currentPushupsStreak = pushupsData
     ? vyhodnotitAnglicaky(pushupsData, dnes(), startDate).streak
     : 0
