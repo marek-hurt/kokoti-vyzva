@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Fragment } from 'react'
 import {
   BarChart3,
   Beer,
+  Bike,
   CalendarDays,
   Check,
   ChevronRight,
@@ -19,6 +20,7 @@ import {
   Trash2,
   Trophy,
   UserRound,
+  Waves,
   WineOff,
   X,
   Zap,
@@ -772,9 +774,16 @@ export default function Page() {
                     <div className="runner-main">
                       <div className="runner-top"><h3>{runner.name}</h3><strong>{runner.total_points.toFixed(2)} <small>bodů</small></strong></div>
                       <div className="runner-stats">
-                        <span><Zap /> {runner.total_beh.toFixed(2)} km</span>
-                        <span><Mountain /> {runner.total_kokotmetr.toLocaleString()} kokotm</span>
-                        <span><WineOff /> {runner.sober_days} dní</span>
+                        {/* Informativní řádek, přesnost nese celkový počet bodů nad
+                            ním. Kolo a bazén se zapisují na celá čísla, takže u nich
+                            desetinné místo nic nepřidá; běh je zlomkový, ten si ho
+                            drží. Jednotky nesou ikony, se slovy by se pět položek na
+                            telefon nevešlo. */}
+                        <span title="běh (km)"><Zap /> {runner.total_beh.toFixed(1)}</span>
+                        <span title="kokotmetry"><Mountain /> {runner.total_kokotmetr.toLocaleString()}</span>
+                        <span title="kolo (km)"><Bike /> {runner.total_kolo.toFixed(0)}</span>
+                        <span title="bazén (km)"><Waves /> {runner.total_bazen.toFixed(0)}</span>
+                        <span title="dní bez alkoholu"><WineOff /> {runner.sober_days}</span>
                       </div>
                       <div className="progress-track"><div style={{ width: `${progress}%` }} /></div>
                     </div>
