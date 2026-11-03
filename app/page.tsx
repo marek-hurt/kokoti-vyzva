@@ -16,6 +16,7 @@ import {
   Plus,
   Settings,
   ShieldCheck,
+  SportShoe,
   Table,
   Trash2,
   Trophy,
@@ -23,7 +24,6 @@ import {
   Waves,
   WineOff,
   X,
-  Zap,
 } from 'lucide-react'
 import ZavodKokotu from '@/components/ZavodKokotu'
 import { BARVY_AVATARU } from '@/lib/zavod'
@@ -779,7 +779,7 @@ export default function Page() {
                             desetinné místo nic nepřidá; běh je zlomkový, ten si ho
                             drží. Jednotky nesou ikony, se slovy by se pět položek na
                             telefon nevešlo. */}
-                        <span title="běh (km)"><Zap /> {runner.total_beh.toFixed(1)}</span>
+                        <span title="běh (km)"><SportShoe /> {runner.total_beh.toFixed(1)}</span>
                         <span title="kokotmetry"><Mountain /> {runner.total_kokotmetr.toLocaleString()}</span>
                         <span title="kolo (km)"><Bike /> {runner.total_kolo.toFixed(0)}</span>
                         <span title="bazén (km)"><Waves /> {runner.total_bazen.toFixed(0)}</span>
