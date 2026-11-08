@@ -311,7 +311,7 @@ export default function Page() {
 
       // Načíst trash talk pro aktuálně vybraného uživatele
       if (selectedUserId) {
-        const trashTalkData = await getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd)
+        const trashTalkData = await getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd, sunnyDay || undefined)
         setTrashTalk(trashTalkData)
       }
 
@@ -349,7 +349,7 @@ export default function Page() {
         window.history.replaceState({}, '', newUrl.toString())
 
         // Aktualizovat trash talk pro nového uživatele
-        getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd).then(setTrashTalk)
+        getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd, sunnyDay || undefined).then(setTrashTalk)
       }
     }
   }, [selectedUserId, users, challengeStart, challengeEnd])
@@ -372,7 +372,7 @@ export default function Page() {
           getConsistencyScore(statsUserId, challengeStart, challengeEnd),
           getComparisonToAverage(statsUserId, challengeStart, challengeEnd),
           getAchievements(statsUserId, challengeStart, challengeEnd),
-          getTrashTalkFeed(statsUserId, challengeStart, challengeEnd),
+          getTrashTalkFeed(statsUserId, challengeStart, challengeEnd, sunnyDay || undefined),
           getYearPrediction(statsUserId, userName, challengeStart, challengeEnd)
         ])
         setUserStreaks(streaks)
@@ -499,7 +499,7 @@ export default function Page() {
         getLeaderboard(challengeStart, challengeEnd, sunnyDay),
         getAllActivities(),
         getPointsHistory(challengeStart, challengeEnd),
-        getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd)
+        getTrashTalkFeed(selectedUserId, challengeStart, challengeEnd, sunnyDay || undefined)
       ])
       setLeaderboard(newLeaderboard)
       setActivities(newActivities)

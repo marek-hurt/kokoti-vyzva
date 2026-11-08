@@ -1620,12 +1620,14 @@ export type TrashTalkMessage = {
   severity: 'brutal' | 'medium' | 'light'
 }
 
-export async function getTrashTalkFeed(userId: string, startDate?: string, endDate?: string): Promise<TrashTalkMessage[]> {
+export async function getTrashTalkFeed(userId: string, startDate?: string, endDate?: string, sunnyDay?: string): Promise<TrashTalkMessage[]> {
   const messages: TrashTalkMessage[] = []
 
-  // Získat aktuální data
+  // Získat aktuální data. sunnyDay předáváme, aby body odpovídaly žebříčku,
+  // který appka ukazuje - hlášky citují konkrétní rozdíly, takže by se to
+  // jinak po sluníčkovém dni rozešlo.
   const [leaderboard, activities, consistency] = await Promise.all([
-    getLeaderboard(startDate, endDate),
+    getLeaderboard(startDate, endDate, sunnyDay),
     supabase
       .from('activities')
       .select('*, users!inner(name)')
@@ -1803,6 +1805,26 @@ export async function getTrashTalkFeed(userId: string, startDate?: string, endDa
       message: lazyMessages[Math.floor(Math.random() * lazyMessages.length)],
       timestamp: new Date().toISOString(),
       severity: 'brutal'
+    })
+  }
+
+  // 7. Kolik ti chybí na Vojtu. Jméno i jeho druhý pád drží konstanty - skládat
+  // 'Vojty' z 'Vojta' připojením koncovky by nefungovalo a u jiného jména by to
+  // bylo ještě horší.
+  const CIL_JMENO = 'Vojta'
+  const CIL_DRUHY_PAD = 'Vojty'
+
+  const cil = leaderboard.find(u => u.name === CIL_JMENO)
+  const ja = leaderboard[userPosition]
+
+  if (cil && ja && cil.id !== userId && ja.total_points < cil.total_points) {
+    const chybi = cil.total_points - ja.total_points
+    messages.push({
+      id: 'na-sud',
+      type: 'overtaken',
+      message: `Na poslání ${CIL_DRUHY_PAD} na sud ti chybí ještě ${chybi.toFixed(1)} bodů`,
+      timestamp: new Date().toISOString(),
+      severity: 'medium'
     })
   }
 
